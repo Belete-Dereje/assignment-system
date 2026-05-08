@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign In - Assignment System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Inter', Arial, sans-serif; background: #f0f2f5; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        
+        .container { width: 100%; max-width: 400px; }
+        
+        .logo { text-align: center; margin-bottom: 25px; }
+        .logo a { text-decoration: none; }
+        .logo .icon { font-size: 34px; }
+        .logo h1 { font-size: 19px; color: #1a1a2e; margin-top: 5px; font-weight: 700; }
+        
+        .card { background: white; padding: 35px 30px; border-radius: 12px; border: 1px solid #e8ecf1; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+        .card h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 4px; font-weight: 700; }
+        .card .subtitle { font-size: 13px; color: #888; margin-bottom: 25px; }
+        
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 6px; }
+        .form-group input { width: 100%; padding: 12px 14px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; color: #333; background: #fafbfc; transition: all 0.2s; }
+        .form-group input:focus { outline: none; border-color: #3498db; background: white; box-shadow: 0 0 0 3px rgba(52,152,219,0.08); }
+        
+        button { width: 100%; padding: 13px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button:hover { background: #2980b9; }
+        
+        .flash { padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+        .danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .warning { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+        
+        .footer { text-align: center; margin-top: 20px; font-size: 13px; color: #999; }
+        .footer a { color: #3498db; text-decoration: none; font-weight: 500; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <a href="/">
+                <div class="icon">📚</div>
+                <h1>Assignment System</h1>
+            </a>
+        </div>
+        
+        <div class="card">
+            <h2>Sign In</h2>
+            <p class="subtitle">Enter your credentials to continue</p>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST">
+                <div class="form-group">
+                    <label>User ID</label>
+                    <input type="text" name="user_id" placeholder="DBU... or T..." required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" placeholder="your@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" placeholder="Your password" required minlength="6">
+                </div>
+                <button type="submit">Sign In</button>
+            </form>
+        </div>
+        
+        <p class="footer">Don't have an account? <a href="/register">Register</a> &nbsp;|&nbsp; <a href="/">Home</a></p>
+    </div>
+</body>
+</html>

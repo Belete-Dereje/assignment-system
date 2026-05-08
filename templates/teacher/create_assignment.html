@@ -1,0 +1,229 @@
+{% extends "teacher_base.html" %}
+{% block title %}Create Assignment{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header { margin-bottom: 30px; }
+    .page-header h2 { color: #2c3e50; font-size: 24px; margin-bottom: 5px; }
+    .page-header p { color: #7f8c8d; font-size: 14px; }
+    
+    .form-container { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 35px; max-width: 800px; }
+    
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 20px; }
+    .form-row.full { grid-template-columns: 1fr; }
+    .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
+    
+    .form-group { margin-bottom: 5px; }
+    .form-group label { display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px; font-size: 14px; }
+    .form-group label .required { color: #e74c3c; }
+    .form-group small { color: #95a5a6; font-size: 12px; display: block; margin-top: 4px; }
+    
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea { 
+        width: 100%; padding: 12px 15px; border: 2px solid #e8e8e8; border-radius: 8px; 
+        font-size: 14px; color: #2c3e50; transition: all 0.2s; background: #fafafa;
+    }
+    .form-group input:focus, 
+    .form-group select:focus, 
+    .form-group textarea:focus { 
+        outline: none; border-color: #3498db; background: white; box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+    }
+    .form-group textarea { resize: vertical; min-height: 100px; }
+    .form-group select { cursor: pointer; }
+    
+    .info-badge { display: inline-block; padding: 4px 10px; background: #eaf2f8; color: #2980b9; border-radius: 15px; font-size: 12px; margin: 2px; }
+    
+    .divider { border: none; border-top: 2px solid #f0f0f0; margin: 25px 0; }
+    .section-title { font-size: 18px; color: #2c3e50; margin-bottom: 20px; font-weight: 600; }
+    
+    .toggle-option { display: flex; gap: 15px; align-items: center; }
+    .toggle-btn { padding: 10px 25px; border: 2px solid #e8e8e8; border-radius: 8px; cursor: pointer; background: #fafafa; font-size: 14px; transition: all 0.2s; }
+    .toggle-btn.active { background: #3498db; color: white; border-color: #3498db; }
+    .toggle-btn:hover { border-color: #3498db; }
+    
+    .penalty-group { display: none; margin-top: 15px; }
+    .penalty-group.show { display: block; }
+    
+    .file-upload-area { border: 2px dashed #ddd; border-radius: 10px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s; background: #fafafa; }
+    .file-upload-area:hover { border-color: #3498db; background: #f0f7ff; }
+    .file-upload-area .icon { font-size: 40px; margin-bottom: 10px; }
+    .file-upload-area p { color: #7f8c8d; margin: 5px 0; }
+    .file-upload-area input { display: none; }
+    
+    .btn-submit { padding: 14px 40px; background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .btn-submit:hover { background: linear-gradient(135deg, #2980b9, #21618c); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(52,152,219,0.3); }
+    
+    .btn-cancel { padding: 14px 25px; background: white; color: #7f8c8d; border: 2px solid #e8e8e8; border-radius: 8px; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-cancel:hover { background: #f8f9fa; }
+    
+    .form-actions { display: flex; gap: 15px; margin-top: 30px; align-items: center; }
+    
+    .flash { padding: 14px 18px; margin-bottom: 25px; border-radius: 8px; font-size: 14px; }
+    .danger { background: #fdf0ef; color: #c0392b; border: 1px solid #f5c6cb; }
+    .success { background: #d5f5e3; color: #27ae60; border: 1px solid #27ae60; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>➕ Create New Assignment</h2>
+    <p>Fill in the details below to create a new assignment for your students</p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="form-container">
+    <form method="POST" enctype="multipart/form-data">
+        
+        <!-- Basic Info -->
+        <div class="section-title">📋 Basic Information</div>
+        
+        <div class="form-row full">
+            <div class="form-group">
+                <label>Assignment Title <span class="required">*</span></label>
+                <input type="text" name="title" placeholder="e.g., Database Systems - Assignment 1" required>
+            </div>
+        </div>
+        
+        <div class="form-row full">
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="4" placeholder="Describe the assignment requirements, instructions, etc."></textarea>
+            </div>
+        </div>
+        
+        <hr class="divider">
+        
+        <!-- Classification -->
+        <div class="section-title">📂 Classification</div>
+        
+        <div class="form-row three">
+            <div class="form-group">
+                <label>Course <span class="required">*</span></label>
+                <select name="course_name" required>
+                    <option value="">Select Course</option>
+                    {% for c in courses %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+                <small>Your courses: 
+                    {% for c in courses %}<span class="info-badge">{{ c }}</span>{% endfor %}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label>Department <span class="required">*</span></label>
+                <select name="department" required>
+                    <option value="">Select Department</option>
+                    {% for d in departments %}
+                    <option value="{{ d }}">{{ d }}</option>
+                    {% endfor %}
+                </select>
+                <small>Your departments: 
+                    {% for d in departments %}<span class="info-badge">{{ d }}</span>{% endfor %}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label>Year <span class="required">*</span></label>
+                <select name="year" required>
+                    <option value="">Select Year</option>
+                    {% for y in years %}
+                    <option value="{{ y }}">Year {{ y }}</option>
+                    {% endfor %}
+                </select>
+                <small>Your years: 
+                    {% for y in years %}<span class="info-badge">Year {{ y }}</span>{% endfor %}
+                </small>
+            </div>
+        </div>
+        
+        <hr class="divider">
+        
+        <!-- Deadline & Late Policy -->
+        <div class="section-title">⏰ Deadline & Late Policy</div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Deadline <span class="required">*</span></label>
+                <input type="datetime-local" name="deadline" required>
+                <small>Cannot be set to a past date</small>
+            </div>
+            
+            <div class="form-group">
+                <label>Late Submission Policy</label>
+                <div class="toggle-option">
+                    <button type="button" class="toggle-btn active" onclick="toggleLate('no')" id="lateNo">🚫 Not Allowed</button>
+                    <button type="button" class="toggle-btn" onclick="toggleLate('yes')" id="lateYes">✅ Allowed</button>
+                </div>
+                <input type="hidden" name="late_submission" id="lateInput" value="no">
+            </div>
+        </div>
+        
+        <div class="penalty-group" id="penaltyGroup">
+            <div class="form-group">
+                <label>Penalty Per Day (%)</label>
+                <input type="number" name="penalty_per_day" value="5" min="0" max="100" step="0.5" placeholder="e.g., 5% deduction per late day">
+                <small>How much percentage to deduct from the grade for each day of late submission</small>
+            </div>
+        </div>
+        
+        <hr class="divider">
+        
+        <!-- Additional Info -->
+        <div class="section-title">💬 Additional Information</div>
+        
+        <div class="form-row full">
+            <div class="form-group">
+                <label>Comment / Hint for Students</label>
+                <textarea name="teacher_comment" rows="3" placeholder="Add any suggestions, hints, or special instructions for your students..."></textarea>
+            </div>
+        </div>
+        
+        <div class="form-row full">
+            <div class="form-group">
+                <label>📎 Attach Files</label>
+                <div class="file-upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="icon">📁</div>
+                    <p><strong>Click to upload files</strong></p>
+                    <p>Any file type: PDF, Word, Video, Audio, Images, etc.</p>
+                    <p style="font-size:12px; color:#95a5a6;">You can select multiple files</p>
+                </div>
+                <input type="file" name="assignment_files" id="fileInput" multiple style="display:none;">
+                <div id="fileList" style="margin-top:10px;"></div>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="form-actions">
+            <button type="submit" class="btn-submit">📝 Create Assignment</button>
+            <a href="/teacher/dashboard" class="btn-cancel">Cancel</a>
+        </div>
+        
+    </form>
+</div>
+
+<script>
+    function toggleLate(val) {
+        document.getElementById('lateInput').value = val;
+        document.getElementById('lateNo').classList.toggle('active', val === 'no');
+        document.getElementById('lateYes').classList.toggle('active', val === 'yes');
+        document.getElementById('penaltyGroup').classList.toggle('show', val === 'yes');
+    }
+    
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        var list = document.getElementById('fileList');
+        list.innerHTML = '';
+        for (var i = 0; i < this.files.length; i++) {
+            list.innerHTML += '<span class="info-badge" style="margin:3px;">📄 ' + this.files[i].name + '</span> ';
+        }
+    });
+</script>
+{% endblock %}

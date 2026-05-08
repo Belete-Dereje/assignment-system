@@ -1,0 +1,80 @@
+{% extends "admin_base.html" %}
+{% block title %}Edit User{% endblock %}
+{% block page_title %}Edit User{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 600px; }
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; font-weight: 600; color: #2c3e50; margin-bottom: 8px; }
+    .form-group input, .form-group select { width: 100%; padding: 12px; border: 2px solid #e8e8e8; border-radius: 8px; font-size: 14px; }
+    .form-group input:focus { border-color: #3498db; outline: none; }
+    .btn-submit { padding: 12px 30px; background: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; }
+    .btn-cancel { padding: 12px 25px; background: #6c757d; color: white; text-decoration: none; border-radius: 8px; display: inline-block; margin-left: 10px; }
+    .checkbox-label { display: flex; align-items: center; gap: 8px; }
+    .checkbox-label input { width: auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h3 style="margin-bottom:25px;">✏️ Edit User: {{ user[2] }} {{ user[3] }}</h3>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label>User ID</label>
+            <input type="text" value="{{ user[1] }}" disabled style="background:#f0f0f0;">
+        </div>
+        <div class="form-group">
+            <label>First Name</label>
+            <input type="text" name="first_name" value="{{ user[2] }}" required>
+        </div>
+        <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" name="last_name" value="{{ user[3] }}" required>
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ user[4] }}" required>
+        </div>
+        <div class="form-group">
+            <label>New Password (leave blank to keep current)</label>
+            <input type="password" name="password" placeholder="Enter new password" minlength="6">
+        </div>
+        
+        {% if user[5] == 'student' and student_data %}
+        <div class="form-group">
+            <label>Department</label>
+            <input type="text" name="department" value="{{ student_data[0] }}">
+        </div>
+        <div class="form-group">
+            <label>Year</label>
+            <input type="number" name="year" value="{{ student_data[1] }}">
+        </div>
+        {% elif user[5] == 'teacher' and teacher_data %}
+        <div class="form-group">
+            <label>Departments (comma separated)</label>
+            <input type="text" name="departments" value="{{ teacher_data[0] }}">
+        </div>
+        <div class="form-group">
+            <label>Years (comma separated)</label>
+            <input type="text" name="years" value="{{ teacher_data[1] }}">
+        </div>
+        <div class="form-group">
+            <label>Courses (comma separated)</label>
+            <input type="text" name="courses" value="{{ teacher_data[2] }}">
+        </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_active" {% if user[6] %}checked{% endif %}>
+                <span>User is active (can login)</span>
+            </label>
+        </div>
+        
+        <button type="submit" class="btn-submit">💾 Save Changes</button>
+        <a href="/admin/users" class="btn-cancel">Cancel</a>
+    </form>
+</div>
+{% endblock %}

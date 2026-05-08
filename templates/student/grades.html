@@ -1,0 +1,55 @@
+{% extends "student_base.html" %}
+{% block title %}My Grades{% endblock %}
+
+{% block extra_css %}
+<style>
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+    th { background: #3498db; color: white; }
+    tr:hover { background: #f8f9fa; }
+    .btn { padding: 8px 14px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; color: white; font-size: 13px; }
+    .btn-warning { background: #f39c12; color: black; }
+    .complaint-form { display: none; margin-top: 10px; }
+    textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+</style>
+<script>
+    function showComplaint(id) {
+        var f = document.getElementById('complaint-' + id);
+        f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<h2>My Grades</h2>
+
+{% if grades %}
+<table>
+    <tr><th>Assignment</th><th>Course</th><th>Teacher</th><th>Grade</th><th>Feedback</th><th>Status</th><th>Complaint</th></tr>
+    {% for g in grades %}
+    <tr>
+        <td>{{ g[0] }}</td><td>{{ g[1] }}</td><td>{{ g[2] }} {{ g[3] }}</td>
+        <td>{{ g[4] if g[4] is not none else '-' }}</td>
+        <td>{{ g[5] if g[5] else '-' }}</td><td>{{ g[6] }}</td>
+        <td>
+            {% if g[6] == 'evaluated' and g[4] is not none %}
+                {% if g[9] %}
+                    <span style="color: {{ 'orange' if g[10] == 'pending' else 'green' }};">{{ g[10] }}</span>
+                {% else %}
+                    <button class="btn btn-warning" onclick="showComplaint({{ g[8] }})">Complain</button>
+                    <div id="complaint-{{ g[8] }}" class="complaint-form">
+                        <form method="POST" action="/student/complain/{{ g[8] }}">
+                            <textarea name="complaint" rows="3" placeholder="Explain why..." required></textarea>
+                            <button type="submit" class="btn btn-warning">Submit Complaint</button>
+                        </form>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No grades yet.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "student_base.html" %}
+{% block title %}Submit Assignment{% endblock %}
+
+{% block extra_css %}
+<style>
+    .details { background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
+    input, textarea { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 5px; }
+    button { padding: 12px 30px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
+    label { font-weight: bold; display: block; margin-top: 15px; }
+    .btn-back { padding: 8px 15px; background: #6c757d; color: white; text-decoration: none; border-radius: 5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>Submit Assignment</h2>
+
+<div class="details">
+    <h3>{{ assignment[1] }}</h3>
+    <p><strong>Course:</strong> {{ assignment[2] }}</p>
+    <p><strong>Teacher:</strong> {{ assignment[3] }} {{ assignment[4] }}</p>
+    <p><strong>Deadline:</strong> {{ assignment[5].strftime('%Y-%m-%d %H:%M') }}</p>
+    {% if assignment[8] %}<p><strong>Comment:</strong> {{ assignment[8] }}</p>{% endif %}
+    {% if assignment[9] %}<p><strong>Files:</strong> <a href="/static/uploads/{{ assignment[9].split(',')[0] }}" download>Download</a></p>{% endif %}
+</div>
+
+{% if existing %}
+<div class="flash success" style="background:#d4edda; color:#155724; padding:10px; border-radius:5px;">
+    <strong>Already Submitted!</strong> Status: {{ existing[1] }}
+</div>
+{% endif %}
+
+<form method="POST" enctype="multipart/form-data">
+    <label>Upload Files (video, audio, documents)</label>
+    <input type="file" name="submission_files" multiple>
+    <label>Comment (optional)</label>
+    <textarea name="comment" rows="4">{{ existing[2] if existing else '' }}</textarea>
+    <button type="submit">{% if existing %}Update Submission{% else %}Submit Assignment{% endif %}</button>
+</form>
+
+<br><a href="/student/dashboard" class="btn-back">Back to Dashboard</a>
+{% endblock %}

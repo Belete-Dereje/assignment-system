@@ -1,0 +1,71 @@
+{% extends "admin_base.html" %}
+{% block title %}System Settings{% endblock %}
+{% block page_title %}System Settings{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); max-width: 600px; }
+    .form-group { margin-bottom: 25px; }
+    .form-group label { display: block; font-weight: 600; color: #2c3e50; margin-bottom: 10px; font-size: 16px; }
+    .form-group small { color: #7f8c8d; display: block; margin-top: 5px; }
+    .toggle-switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .3s; border-radius: 34px; }
+    .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%; }
+    input:checked + .slider { background-color: #27ae60; }
+    input:checked + .slider:before { transform: translateX(26px); }
+    .btn-submit { padding: 12px 30px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; }
+    .btn-submit:hover { background: #2980b9; }
+    .current-status { display: inline-block; padding: 5px 12px; border-radius: 15px; font-size: 13px; margin-left: 10px; }
+    .status-on { background: #d5f5e3; color: #27ae60; }
+    .status-off { background: #fadbd8; color: #e74c3c; }
+    input[type="datetime-local"] { padding: 10px; border: 2px solid #e8e8e8; border-radius: 8px; width: 100%; max-width: 300px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h3 style="margin-bottom:25px;">⚙️ System Settings</h3>
+    
+    <form method="POST">
+        <div class="form-group">
+            <label>
+                🎓 Student Registration
+                <span class="current-status {{ 'status-on' if settings.get('reg_student', 'on') == 'on' else 'status-off' }}">
+                    {{ 'ON' if settings.get('reg_student', 'on') == 'on' else 'OFF' }}
+                </span>
+            </label>
+            <label class="toggle-switch">
+                <input type="checkbox" name="reg_student" value="on" {{ 'checked' if settings.get('reg_student', 'on') == 'on' }}>
+                <span class="slider"></span>
+            </label>
+            <small>Allow new students to register</small>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                👨‍🏫 Teacher Registration
+                <span class="current-status {{ 'status-on' if settings.get('reg_teacher', 'on') == 'on' else 'status-off' }}">
+                    {{ 'ON' if settings.get('reg_teacher', 'on') == 'on' else 'OFF' }}
+                </span>
+            </label>
+            <label class="toggle-switch">
+                <input type="checkbox" name="reg_teacher" value="on" {{ 'checked' if settings.get('reg_teacher', 'on') == 'on' }}>
+                <span class="slider"></span>
+            </label>
+            <small>Allow new teachers to register</small>
+        </div>
+        
+        <div class="form-group">
+            <label>📅 Registration Period (Optional)</label>
+            <small style="margin-bottom:8px;">Start Date</small>
+            <input type="datetime-local" name="reg_start" value="{{ settings.get('reg_start', '') }}">
+            <small style="margin:8px 0;">End Date</small>
+            <input type="datetime-local" name="reg_end" value="{{ settings.get('reg_end', '') }}">
+            <small>If set, registration will only be available during this period</small>
+        </div>
+        
+        <button type="submit" class="btn-submit">💾 Save Settings</button>
+    </form>
+</div>
+{% endblock %}

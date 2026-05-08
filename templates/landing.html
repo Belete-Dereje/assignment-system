@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Assignment System - Distributed Submission & Evaluation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', 'Inter', Arial, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+        
+        .nav { display: flex; justify-content: space-between; align-items: center; padding: 18px 50px; background: white; border-bottom: 1px solid #e8ecf1; position: sticky; top: 0; z-index: 10; }
+        .nav .logo { font-size: 19px; font-weight: 700; color: #1a1a2e; display: flex; align-items: center; gap: 8px; }
+        .nav .logo span { font-size: 24px; }
+        .nav .links { display: flex; gap: 20px; align-items: center; }
+        .nav .links a { text-decoration: none; color: #555; font-size: 14px; font-weight: 500; }
+        .nav .links a:hover { color: #3498db; }
+        .nav .links .btn-login { padding: 9px 22px; background: #3498db; color: white; border-radius: 6px; font-weight: 600; }
+        .nav .links .btn-login:hover { background: #2980b9; color: white; }
+        
+        .hero { max-width: 700px; margin: 100px auto 60px; text-align: center; padding: 0 20px; }
+        .hero .badge { display: inline-block; padding: 6px 16px; background: #e8f4fd; color: #2980b9; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 20px; }
+        .hero h1 { font-size: 40px; color: #1a1a2e; margin-bottom: 15px; font-weight: 800; line-height: 1.2; }
+        .hero h1 span { color: #3498db; }
+        .hero p { font-size: 17px; color: #666; line-height: 1.7; margin-bottom: 35px; }
+        .hero .cta { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+        .hero .cta a { padding: 14px 35px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; transition: all 0.2s; }
+        .hero .cta .btn-primary { background: #3498db; color: white; }
+        .hero .cta .btn-primary:hover { background: #2980b9; transform: translateY(-1px); box-shadow: 0 4px 15px rgba(52,152,219,0.3); }
+        .hero .cta .btn-outline { border: 2px solid #d1d5db; color: #555; background: white; }
+        .hero .cta .btn-outline:hover { border-color: #3498db; color: #3498db; }
+        
+        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 850px; margin: 0 auto 80px; padding: 0 20px; }
+        .feature { background: white; padding: 30px 25px; border-radius: 12px; border: 1px solid #e8ecf1; text-align: center; transition: all 0.2s; }
+        .feature:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(0,0,0,0.06); }
+        .feature .icon { font-size: 36px; margin-bottom: 15px; display: block; }
+        .feature h3 { font-size: 15px; margin-bottom: 8px; color: #1a1a2e; font-weight: 700; }
+        .feature p { font-size: 13px; color: #777; line-height: 1.5; }
+        
+        .footer { text-align: center; padding: 25px; color: #999; font-size: 13px; }
+        
+        @media (max-width: 650px) {
+            .nav { padding: 15px 20px; }
+            .hero { margin: 60px auto 40px; }
+            .hero h1 { font-size: 30px; }
+            .hero p { font-size: 15px; }
+            .features { grid-template-columns: 1fr; max-width: 380px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <div class="logo"><span>📚</span> Assignment System</div>
+        <div class="links">
+            <a href="/login">Sign In</a>
+            <a href="/register" class="btn-login">Get Started</a>
+        </div>
+    </div>
+    
+    <div class="hero">
+        <div class="badge">🚀 Distributed Platform</div>
+        <h1>Assignment Submission <span>& Evaluation</span></h1>
+        <p>Submit assignments, get feedback, and track your progress. Built with a distributed architecture for reliability across multiple machines.</p>
+        <div class="cta">
+            <a href="/register" class="btn-primary">Create Account</a>
+            <a href="/login" class="btn-outline">Sign In</a>
+        </div>
+    </div>
+    
+    <div class="features">
+        <div class="feature">
+            <span class="icon">📤</span>
+            <h3>Easy Submission</h3>
+            <p>Upload any file type - documents, videos, audio, code, and more.</p>
+        </div>
+        <div class="feature">
+            <span class="icon">📊</span>
+            <h3>Track Progress</h3>
+            <p>View grades, teacher feedback, and assignment status instantly.</p>
+        </div>
+        <div class="feature">
+            <span class="icon">🔄</span>
+            <h3>Always Available</h3>
+            <p>Distributed across multiple nodes for high availability and reliability.</p>
+        </div>
+    </div>
+    
+    <div class="footer">
+        &copy; 2026 Assignment System
+    </div>
+</body>
+</html>

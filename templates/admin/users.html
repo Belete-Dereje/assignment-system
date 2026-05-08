@@ -1,0 +1,85 @@
+{% extends "admin_base.html" %}
+{% block title %}Manage Users{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 25px; display: flex; gap: 15px; align-items: end; flex-wrap: wrap; }
+    .filter-bar select, .filter-bar button { padding: 10px 15px; border: 2px solid #e8e8e8; border-radius: 8px; font-size: 14px; }
+    .filter-bar button { background: #3498db; color: white; border: none; cursor: pointer; font-weight: 600; }
+    .filter-bar button:hover { background: #2980b9; }
+    
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+    th { background: #2c3e50; color: white; font-weight: 600; }
+    tr:hover { background: #f8f9fa; }
+    
+    .btn { padding: 6px 12px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; color: white; font-size: 12px; display: inline-block; margin: 2px; }
+    .btn-primary { background: #3498db; }
+    .btn-warning { background: #f39c12; color: black; }
+    .btn-danger { background: #e74c3c; }
+    
+    .status-active { color: #27ae60; font-weight: bold; }
+    .status-inactive { color: #e74c3c; font-weight: bold; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filter-bar">
+    <form method="GET" style="display:flex; gap:15px; align-items:end; flex-wrap:wrap;">
+        <div>
+            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:5px;">Role</label>
+            <select name="role" onchange="this.form.submit()">
+                <option value="">All Roles</option>
+                <option value="student" {% if role_filter=='student' %}selected{% endif %}>Student</option>
+                <option value="teacher" {% if role_filter=='teacher' %}selected{% endif %}>Teacher</option>
+                <option value="admin" {% if role_filter=='admin' %}selected{% endif %}>Admin</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:5px;">Year</label>
+            <select name="year" onchange="this.form.submit()">
+                <option value="">All Years</option>
+                {% for y in years %}<option value="{{ y }}" {% if year_filter==y %}selected{% endif %}>Year {{ y }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label style="font-weight:600; font-size:13px; display:block; margin-bottom:5px;">Department</label>
+            <select name="department" onchange="this.form.submit()">
+                <option value="">All Departments</option>
+                {% for d in departments %}<option value="{{ d }}" {% if dept_filter==d %}selected{% endif %}>{{ d }}</option>{% endfor %}
+            </select>
+        </div>
+        <button type="submit">🔍 Filter</button>
+        <a href="/admin/users" style="padding:10px 15px; color:#7f8c8d; text-decoration:none;">Clear</a>
+    </form>
+</div>
+
+<table>
+    <tr>
+        <th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Registered</th><th>Actions</th>
+    </tr>
+    {% for u in users %}
+    <tr>
+        <td><strong>{{ u[1] }}</strong></td>
+        <td>{{ u[2] }} {{ u[3] }}</td>
+        <td>{{ u[4] }}</td>
+        <td><span style="text-transform:capitalize;">{{ u[5] }}</span></td>
+        <td>
+            {% if u[6] %}
+                <span class="status-active">● Active</span>
+            {% else %}
+                <span class="status-inactive">● Inactive</span>
+            {% endif %}
+        </td>
+        <td>{{ u[7].strftime('%Y-%m-%d') if u[7] else '' }}</td>
+        <td>
+            <a href="/admin/edit-user/{{ u[0] }}" class="btn btn-primary">✏️ Edit</a>
+            <a href="/admin/toggle-user/{{ u[0] }}" class="btn {{ 'btn-danger' if u[6] else 'btn-warning' }}">
+                {{ '🚫 Deactivate' if u[6] else '✅ Activate' }}
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

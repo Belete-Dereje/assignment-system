@@ -1,0 +1,475 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, send_file, make_response
+from flask_login import login_required, current_user
+import psycopg2
+from config import Config
+from datetime import datetime
+import os
+from io import BytesIO
+
+teacher_bp = Blueprint('teacher', __name__, url_prefix='/teacher')
+
+def get_db():
+    conn = psycopg2.connect(Config.SQLALCHEMY_DATABASE_URI.replace('cockroachdb://', 'postgresql://'))
+    conn.autocommit = True
+    return conn
+
+
+@teacher_bp.route('/dashboard')
+@login_required
+def dashboard():
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT id, departments, years, courses FROM teachers WHERE user_id = %s", (current_user.id,))
+    teacher = cur.fetchone()
+    teacher_id = teacher[0]
+    
+    cur.execute("SELECT COUNT(*) FROM assignments WHERE teacher_id = %s", (teacher_id,))
+    total_assignments = cur.fetchone()[0]
+    
+    cur.execute("""
+        SELECT COUNT(*) FROM submissions s
+        JOIN assignments a ON s.assignment_id = a.id
+        WHERE a.teacher_id = %s
+    """, (teacher_id,))
+    total_submissions = cur.fetchone()[0]
+    
+    cur.execute("""
+        SELECT COUNT(*) FROM submissions s
+        JOIN assignments a ON s.assignment_id = a.id
+        WHERE a.teacher_id = %s AND s.status = 'submitted'
+    """, (teacher_id,))
+    unevaluated = cur.fetchone()[0]
+    
+    cur.execute("""
+        SELECT COUNT(*) FROM assignments
+        WHERE teacher_id = %s AND deadline < NOW()
+    """, (teacher_id,))
+    overdue = cur.fetchone()[0]
+    
+    cur.execute("""
+        SELECT id, title, course_name, department, year, deadline, 
+               late_submission, penalty_per_day, created_at
+        FROM assignments WHERE teacher_id = %s
+        ORDER BY created_at DESC
+    """, (teacher_id,))
+    assignments = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return render_template('teacher/dashboard.html',
+                         total_assignments=total_assignments,
+                         total_submissions=total_submissions,
+                         unevaluated=unevaluated,
+                         overdue=overdue,
+                         assignments=assignments)
+
+
+@teacher_bp.route('/submissions/<int:assignment_id>')
+@login_required
+def view_submissions(assignment_id):
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT a.id, a.title, a.course_name, a.department, a.year, a.deadline,
+               a.late_submission, a.penalty_per_day
+        FROM assignments a WHERE a.id = %s
+    """, (assignment_id,))
+    assignment = cur.fetchone()
+    
+    if not assignment:
+        flash('Assignment not found!', 'danger')
+        return redirect(url_for('teacher.dashboard'))
+    
+    cur.execute("""
+        SELECT s.id, s.student_id, u.first_name, u.last_name, u.user_id, 
+               s.status, s.grade, s.feedback, s.submitted_at, s.files, s.student_comment
+        FROM submissions s
+        JOIN students st ON s.student_id = st.id
+        JOIN users u ON st.user_id = u.id
+        WHERE s.assignment_id = %s
+        ORDER BY s.submitted_at DESC
+    """, (assignment_id,))
+    submissions = cur.fetchall()
+    
+    cur.execute("""
+        SELECT st.id, u.first_name, u.last_name, u.user_id
+        FROM students st
+        JOIN users u ON st.user_id = u.id
+        WHERE st.department = %s AND st.year = %s
+        AND st.id NOT IN (
+            SELECT student_id FROM submissions WHERE assignment_id = %s
+        )
+    """, (assignment[3], assignment[4], assignment_id))
+    not_submitted = cur.fetchall()
+    
+    cur.execute("""
+        SELECT als.student_id, als.reason, u.first_name, u.last_name
+        FROM allowed_late_submissions als
+        JOIN students st ON als.student_id = st.id
+        JOIN users u ON st.user_id = u.id
+        WHERE als.assignment_id = %s
+    """, (assignment_id,))
+    allowed_late = cur.fetchall()
+    allowed_late_dict = {a[0]: a for a in allowed_late}
+    
+    cur.close()
+    conn.close()
+    
+    return render_template('teacher/submissions.html',
+                         assignment=assignment,
+                         submissions=submissions,
+                         not_submitted=not_submitted,
+                         allowed_late_dict=allowed_late_dict)
+
+
+@teacher_bp.route('/stats/<int:assignment_id>')
+@login_required
+def get_stats(assignment_id):
+    if current_user.role != 'teacher':
+        return {'error': 'Unauthorized'}, 403
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT department, year FROM assignments WHERE id = %s", (assignment_id,))
+    assignment = cur.fetchone()
+    
+    if not assignment:
+        return {'error': 'Not found'}, 404
+    
+    cur.execute("""
+        SELECT st.id, u.first_name, u.last_name, u.user_id
+        FROM students st
+        JOIN users u ON st.user_id = u.id
+        WHERE st.department = %s AND st.year = %s
+    """, (assignment[0], assignment[1]))
+    all_students = cur.fetchall()
+    
+    cur.execute("""
+        SELECT student_id, status, grade, feedback
+        FROM submissions WHERE assignment_id = %s
+    """, (assignment_id,))
+    submissions = cur.fetchall()
+    submission_dict = {s[0]: s for s in submissions}
+    
+    total = len(all_students)
+    submitted_count = len(submissions)
+    not_submitted_count = total - submitted_count
+    evaluated_count = sum(1 for s in submissions if s[1] == 'evaluated')
+    late_count = sum(1 for s in submissions if s[1] == 'late')
+    
+    grades = [s[2] for s in submissions if s[2] is not None]
+    avg_grade = round(sum(grades) / len(grades), 1) if grades else None
+    
+    students_data = []
+    for student in all_students:
+        sid = student[0]
+        sub = submission_dict.get(sid)
+        students_data.append({
+            'name': f"{student[1]} {student[2]}",
+            'user_id': student[3],
+            'status': sub[1] if sub else 'not_submitted',
+            'grade': sub[2] if sub else None,
+            'feedback': sub[3] if sub else None
+        })
+    
+    cur.close()
+    conn.close()
+    
+    return {
+        'total_students': total,
+        'submitted_count': submitted_count,
+        'not_submitted_count': not_submitted_count,
+        'evaluated_count': evaluated_count,
+        'late_count': late_count,
+        'avg_grade': avg_grade,
+        'students': students_data
+    }
+
+
+@teacher_bp.route('/evaluate/<int:submission_id>', methods=['GET', 'POST'])
+@login_required
+def evaluate(submission_id):
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT s.id, s.grade, s.feedback, s.status, s.files, s.student_comment,
+               u.first_name, u.last_name, u.user_id, a.title, a.id as assignment_id
+        FROM submissions s
+        JOIN students st ON s.student_id = st.id
+        JOIN users u ON st.user_id = u.id
+        JOIN assignments a ON s.assignment_id = a.id
+        WHERE s.id = %s
+    """, (submission_id,))
+    submission = cur.fetchone()
+    
+    if request.method == 'POST':
+        grade = request.form.get('grade', '').strip()
+        feedback = request.form.get('feedback', '').strip()
+        
+        try:
+            grade = float(grade)
+        except ValueError:
+            flash('Grade must be a number!', 'danger')
+            cur.close()
+            conn.close()
+            return render_template('teacher/evaluate.html', submission=submission)
+        
+        cur.execute("""
+            UPDATE submissions SET grade = %s, feedback = %s, status = 'evaluated', evaluated_at = %s
+            WHERE id = %s
+        """, (grade, feedback, datetime.now(), submission_id))
+        
+        cur.close()
+        conn.close()
+        
+        flash('Submission evaluated successfully!', 'success')
+        return redirect(url_for('teacher.view_submissions', assignment_id=submission[10]))
+    
+    cur.close()
+    conn.close()
+    return render_template('teacher/evaluate.html', submission=submission)
+
+
+@teacher_bp.route('/create-assignment', methods=['GET', 'POST'])
+@login_required
+def create_assignment():
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, departments, years, courses FROM teachers WHERE user_id = %s", (current_user.id,))
+    teacher = cur.fetchone()
+    teacher_id = teacher[0]
+    teacher_departments = [d.strip() for d in teacher[1].split(',') if d.strip()]
+    teacher_years = [y.strip() for y in teacher[2].split(',') if y.strip()]
+    teacher_courses = [c.strip() for c in teacher[3].split(',') if c.strip()]
+    
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        course_name = request.form.get('course_name', '').strip()
+        department = request.form.get('department', '').strip()
+        year = request.form.get('year', '').strip()
+        deadline = request.form.get('deadline', '').strip()
+        late_submission = request.form.get('late_submission') == 'yes'
+        penalty_per_day = request.form.get('penalty_per_day', '0').strip()
+        teacher_comment = request.form.get('teacher_comment', '').strip()
+        
+        if not all([title, course_name, department, year, deadline]):
+            flash('All required fields must be filled!', 'danger')
+            return render_template('teacher/create_assignment.html', departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+        
+        if department not in teacher_departments:
+            flash(f'You are not registered for department: {department}', 'danger')
+            return render_template('teacher/create_assignment.html', departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+        
+        if year not in teacher_years:
+            flash(f'You are not registered for year: {year}', 'danger')
+            return render_template('teacher/create_assignment.html', departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+        
+        try:
+            deadline_date = datetime.strptime(deadline, '%Y-%m-%dT%H:%M')
+            if deadline_date < datetime.now():
+                flash('Deadline cannot be in the past!', 'danger')
+                return render_template('teacher/create_assignment.html', departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+        except ValueError:
+            flash('Invalid deadline format!', 'danger')
+            return render_template('teacher/create_assignment.html', departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+        
+        files = ''
+        if 'assignment_files' in request.files:
+            uploaded_files = request.files.getlist('assignment_files')
+            file_paths = []
+            for file in uploaded_files:
+                if file.filename:
+                    filename = f"{datetime.now().timestamp()}_{file.filename}"
+                    filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
+                    file.save(filepath)
+                    file_paths.append(filename)
+            files = ','.join(file_paths)
+        
+        penalty = float(penalty_per_day) if penalty_per_day else 0.0
+        
+        cur.execute("""
+            INSERT INTO assignments (title, description, teacher_id, course_name, department, year, deadline, late_submission, penalty_per_day, teacher_comment, files)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (title, description, teacher_id, course_name, department, int(year), deadline_date, late_submission, penalty, teacher_comment, files))
+        
+        cur.close()
+        conn.close()
+        flash('Assignment created successfully!', 'success')
+        return redirect(url_for('teacher.dashboard'))
+    
+    cur.close()
+    conn.close()
+    return render_template('teacher/create_assignment.html', departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+
+
+@teacher_bp.route('/edit-assignment/<int:assignment_id>', methods=['GET', 'POST'])
+@login_required
+def edit_assignment(assignment_id):
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id, departments, years, courses FROM teachers WHERE user_id = %s", (current_user.id,))
+    teacher = cur.fetchone()
+    teacher_id = teacher[0]
+    teacher_departments = [d.strip() for d in teacher[1].split(',') if d.strip()]
+    teacher_years = [y.strip() for y in teacher[2].split(',') if y.strip()]
+    teacher_courses = [c.strip() for c in teacher[3].split(',') if c.strip()]
+    
+    cur.execute("SELECT id, title, description, course_name, department, year, deadline, late_submission, penalty_per_day, teacher_comment, files FROM assignments WHERE id = %s AND teacher_id = %s", (assignment_id, teacher_id))
+    assignment = cur.fetchone()
+    
+    if not assignment:
+        flash('Assignment not found!', 'danger')
+        return redirect(url_for('teacher.dashboard'))
+    
+    if request.method == 'POST':
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        course_name = request.form.get('course_name', '').strip()
+        department = request.form.get('department', '').strip()
+        year = request.form.get('year', '').strip()
+        deadline = request.form.get('deadline', '').strip()
+        late_submission = request.form.get('late_submission') == 'yes'
+        penalty_per_day = request.form.get('penalty_per_day', '0').strip()
+        teacher_comment = request.form.get('teacher_comment', '').strip()
+        replace_files = request.form.get('replace_files') == 'yes'
+        
+        try:
+            deadline_date = datetime.strptime(deadline, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            flash('Invalid deadline format!', 'danger')
+            return render_template('teacher/edit_assignment.html', assignment=assignment, departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+        
+        files = assignment[10]
+        if replace_files and 'assignment_files' in request.files:
+            new_paths = []
+            for f in request.files.getlist('assignment_files'):
+                if f.filename:
+                    fname = f"{datetime.now().timestamp()}_{f.filename}"
+                    f.save(os.path.join(Config.UPLOAD_FOLDER, fname))
+                    new_paths.append(fname)
+            files = ','.join(new_paths) if new_paths else ''
+        
+        penalty = float(penalty_per_day) if penalty_per_day else 0.0
+        
+        cur.execute("""UPDATE assignments SET title=%s, description=%s, course_name=%s, department=%s, year=%s, deadline=%s, late_submission=%s, penalty_per_day=%s, teacher_comment=%s, files=%s WHERE id=%s""",
+                   (title, description, course_name, department, int(year), deadline_date, late_submission, penalty, teacher_comment, files, assignment_id))
+        cur.close()
+        conn.close()
+        flash('Assignment updated!', 'success')
+        return redirect(url_for('teacher.dashboard'))
+    
+    cur.close()
+    conn.close()
+    return render_template('teacher/edit_assignment.html', assignment=assignment, departments=teacher_departments, years=teacher_years, courses=teacher_courses)
+
+
+@teacher_bp.route('/manage-late/<int:assignment_id>', methods=['POST'])
+@login_required
+def manage_late(assignment_id):
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    action = request.form.get('action', '').strip()
+    student_ids = request.form.getlist('student_ids')
+    
+    if not student_ids:
+        flash('Select at least one student!', 'warning')
+        return redirect(url_for('teacher.view_submissions', assignment_id=assignment_id))
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM teachers WHERE user_id = %s", (current_user.id,))
+    teacher_id = cur.fetchone()[0]
+    
+    if action == 'allow':
+        reason = request.form.get('reason', '').strip()
+        if not reason:
+            flash('Provide a reason!', 'danger')
+            return redirect(url_for('teacher.view_submissions', assignment_id=assignment_id))
+        for sid in student_ids:
+            cur.execute("SELECT id FROM allowed_late_submissions WHERE assignment_id=%s AND student_id=%s", (assignment_id, sid))
+            if not cur.fetchone():
+                cur.execute("INSERT INTO allowed_late_submissions (assignment_id, student_id, reason, allowed_by) VALUES (%s,%s,%s,%s)", (assignment_id, sid, reason, teacher_id))
+        flash(f'Allowed {len(student_ids)} student(s)!', 'success')
+    elif action == 'revoke':
+        for sid in student_ids:
+            cur.execute("DELETE FROM allowed_late_submissions WHERE assignment_id=%s AND student_id=%s", (assignment_id, sid))
+        flash(f'Revoked {len(student_ids)} student(s)!', 'warning')
+    
+    cur.close()
+    conn.close()
+    return redirect(url_for('teacher.view_submissions', assignment_id=assignment_id))
+
+
+@teacher_bp.route('/export-pdf/<int:assignment_id>')
+@login_required
+def export_pdf(assignment_id):
+    if current_user.role != 'teacher':
+        return redirect(url_for('auth.login'))
+    
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet
+    
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT title, course_name, department, year, deadline FROM assignments WHERE id=%s", (assignment_id,))
+    a = cur.fetchone()
+    cur.execute("SELECT u.user_id, u.first_name, u.last_name, s.status, s.grade, s.feedback, s.submitted_at FROM submissions s JOIN students st ON s.student_id=st.id JOIN users u ON st.user_id=u.id WHERE s.assignment_id=%s ORDER BY s.submitted_at DESC", (assignment_id,))
+    subs = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    elements = []
+    styles = getSampleStyleSheet()
+    elements.append(Paragraph(f"<b>{a[0]}</b>", styles['Title']))
+    elements.append(Paragraph(f"Course: {a[1]} | Dept: {a[2]} | Year: {a[3]} | Deadline: {a[4].strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+    
+    data = [['Student ID', 'Name', 'Status', 'Grade', 'Feedback', 'Submitted']]
+    for s in subs:
+        data.append([s[0], f"{s[1]} {s[2]}", s[3], f"{s[4]}%" if s[4] else '-', s[5][:80] if s[5] else '-', s[6].strftime('%Y-%m-%d %H:%M') if s[6] else '-'])
+    
+    table = Table(data)
+    table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), colors.HexColor('#3498db')), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('GRID', (0,0), (-1,-1), 1, colors.black), ('FONTSIZE', (0,0), (-1,-1), 9), ('PADDING', (0,0), (-1,-1), 5)]))
+    elements.append(table)
+    doc.build(elements)
+    buffer.seek(0)
+    resp = make_response(buffer.getvalue())
+    resp.headers['Content-Type'] = 'application/pdf'
+    resp.headers['Content-Disposition'] = f'attachment; filename=submissions_{assignment_id}.pdf'
+    return resp
+
+
+@teacher_bp.route('/download/<path:filename>')
+@login_required
+def download_file(filename):
+    filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
+    if os.path.exists(filepath):
+        return send_file(filepath, as_attachment=True)
+    flash('File not found!', 'danger')
+    return redirect(request.referrer or url_for('teacher.dashboard'))

@@ -1,0 +1,110 @@
+{% extends "teacher_base.html" %}
+{% block title %}Teacher Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
+    .card { background: white; padding: 25px; border-radius: 10px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .card h3 { font-size: 36px; color: #3498db; margin-bottom: 5px; }
+    .card p { color: #7f8c8d; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #ecf0f1; }
+    th { background: #3498db; color: white; }
+    tr:hover { background: #f8f9fa; }
+    .btn { padding: 8px 14px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; color: white; display: inline-block; margin: 2px; font-size: 13px; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-primary { background: #3498db; }
+    .btn-success { background: #27ae60; }
+    .btn-danger { background: #e74c3c; }
+    select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; max-width: 400px; margin: 10px 0; }
+    .stat-box { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #3498db; }
+    .stat-box h4 { margin-bottom: 8px; color: #2c3e50; }
+    .student-list { max-height: 350px; overflow-y: auto; }
+    .student-item { padding: 8px 12px; margin: 3px 0; background: #f8f9fa; border-radius: 5px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
+    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
+    .badge-submitted { background: #f39c12; color: black; }
+    .badge-evaluated { background: #27ae60; }
+    .badge-late { background: #e74c3c; }
+    .badge-not { background: #bdc3c7; color: #555; }
+    h2 { color: #2c3e50; margin-bottom: 20px; }
+    h3 { color: #2c3e50; margin-bottom: 15px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Dashboard Panel -->
+<div class="section-panel active" id="panel-dashboard">
+    <h2>📊 Dashboard</h2>
+    <div class="cards">
+        <div class="card"><h3>{{ total_assignments }}</h3><p>Total Assignments</p></div>
+        <div class="card"><h3>{{ total_submissions }}</h3><p>Total Submissions</p></div>
+        <div class="card"><h3>{{ unevaluated }}</h3><p>Unevaluated</p></div>
+        <div class="card"><h3>{{ overdue }}</h3><p>Overdue</p></div>
+    </div>
+</div>
+
+<!-- My Assignments Panel -->
+<div class="section-panel" id="panel-assignments">
+    <h2>📝 My Assignments</h2>
+    <table>
+        <tr><th>Title</th><th>Course</th><th>Dept</th><th>Year</th><th>Deadline</th><th>Actions</th></tr>
+        {% for a in assignments %}
+        <tr>
+            <td><strong>{{ a[1] }}</strong></td>
+            <td>{{ a[2] }}</td><td>{{ a[3] }}</td><td>{{ a[4] }}</td>
+            <td>{{ a[5].strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+                <a href="/teacher/submissions/{{ a[0] }}" class="btn btn-success btn-sm">📥 Submissions</a>
+                <a href="/teacher/edit-assignment/{{ a[0] }}" class="btn btn-primary btn-sm">✏️ Edit</a>
+                <a href="/teacher/export-pdf/{{ a[0] }}" class="btn btn-danger btn-sm">📄 PDF</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<!-- Statistics Panel -->
+<div class="section-panel" id="panel-statistics">
+    <h2>📈 Statistics</h2>
+    <select id="statsSelect" onchange="loadAssignmentStats()">
+        <option value="">-- Select an Assignment --</option>
+        {% for a in assignments %}
+        <option value="{{ a[0] }}">{{ a[1] }}</option>
+        {% endfor %}
+    </select>
+    <div id="statsResult" style="margin-top:20px;">
+        <p style="color:#95a5a6;">Select an assignment to see detailed statistics</p>
+    </div>
+</div>
+
+<script>
+    function loadAssignmentStats() {
+        var id = document.getElementById('statsSelect').value;
+        var result = document.getElementById('statsResult');
+        if (!id) { result.innerHTML = '<p style="color:#95a5a6;">Select an assignment to see detailed statistics</p>'; return; }
+        result.innerHTML = '<p>Loading...</p>';
+        fetch('/teacher/stats/' + id)
+        .then(r => r.json())
+        .then(d => {
+            var h = '<div class="stat-box"><h4>📋 Assignment Summary</h4>';
+            h += '<p><strong>Total Students:</strong> ' + d.total_students + '</p>';
+            h += '<p><strong>Submitted:</strong> ' + d.submitted_count + ' | <strong>Not Submitted:</strong> ' + d.not_submitted_count + '</p>';
+            h += '<p><strong>Evaluated:</strong> ' + d.evaluated_count + ' | <strong>Late:</strong> ' + d.late_count + '</p>';
+            h += '<p><strong>Average Grade:</strong> ' + (d.avg_grade ? d.avg_grade + '%' : 'N/A') + '</p></div>';
+            h += '<h4 style="margin-top:20px;">👨‍🎓 Students</h4><div class="student-list">';
+            d.students.forEach(function(s) {
+                var bc = 'badge-not';
+                if (s.status === 'submitted') bc = 'badge-submitted';
+                else if (s.status === 'evaluated') bc = 'badge-evaluated';
+                else if (s.status === 'late') bc = 'badge-late';
+                h += '<div class="student-item"><span><strong>' + s.name + '</strong> (' + s.user_id + ')</span><span class="badge ' + bc + '">' + s.status + '</span>';
+                if (s.grade) h += ' <span style="font-weight:bold;">' + s.grade + '%</span>';
+                h += '</div>';
+            });
+            h += '</div>';
+            result.innerHTML = h;
+        });
+    }
+</script>
+{% endblock %}
