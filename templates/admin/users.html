@@ -72,7 +72,7 @@
                 <span class="status-inactive">● Inactive</span>
             {% endif %}
         </td>
-        <td>{{ u[7].strftime('%Y-%m-%d') if u[7] else '' }}</td>
+        <td>{{ u[7] if u[7] else '' }}</td>
         <td>
             <a href="/admin/edit-user/{{ u[0] }}" class="btn btn-primary">✏️ Edit</a>
             <a href="/admin/toggle-user/{{ u[0] }}" class="btn {{ 'btn-danger' if u[6] else 'btn-warning' }}">

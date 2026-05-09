@@ -10,38 +10,28 @@
         .layout { display: flex; min-height: 100vh; }
         
         .sidebar { width: 260px; background: #1e2a3a; color: #ecf0f1; padding: 0; position: fixed; height: 100vh; overflow-y: auto; z-index: 100; transition: transform 0.3s; display: flex; flex-direction: column; }
-        
         .sidebar .logo { padding: 20px; font-size: 18px; font-weight: bold; text-align: center; border-bottom: 1px solid #2c3e50; }
         .sidebar .logo .icon { font-size: 32px; display: block; margin-bottom: 5px; }
-        
         .sidebar .profile-card { padding: 20px; border-bottom: 1px solid #2c3e50; display: flex; align-items: center; gap: 12px; background: #162032; }
         .sidebar .profile-card .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 20px; flex-shrink: 0; }
         .sidebar .profile-card .info { overflow: hidden; }
-        .sidebar .profile-card .info .name { font-weight: 600; font-size: 15px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sidebar .profile-card .info .name { font-weight: 600; font-size: 15px; color: white; }
         .sidebar .profile-card .info .role { font-size: 12px; color: #e74c3c; margin-top: 2px; }
         .sidebar .profile-card .info .id-text { font-size: 11px; color: #7f8c8d; }
-        
         .sidebar nav { flex: 1; padding: 10px 0; }
         .sidebar nav a { display: flex; align-items: center; padding: 13px 20px; color: #bdc3c7; text-decoration: none; font-size: 14px; border-left: 3px solid transparent; cursor: pointer; transition: all 0.2s; margin: 2px 0; }
         .sidebar nav a:hover { background: #2c3e50; color: white; border-left-color: #e74c3c; }
         .sidebar nav a.active { background: #2c3e50; color: white; border-left-color: #e74c3c; font-weight: bold; }
         .sidebar nav a .icon { margin-right: 12px; font-size: 18px; width: 24px; text-align: center; }
-        
         .sidebar .sidebar-footer { padding: 15px 20px; border-top: 1px solid #2c3e50; }
-        .sidebar .sidebar-footer .logout-btn { display: flex; align-items: center; gap: 10px; padding: 12px; background: rgba(231,76,60,0.15); color: #e74c3c; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500; transition: all 0.2s; }
+        .sidebar .sidebar-footer .logout-btn { display: flex; align-items: center; gap: 10px; padding: 12px; background: rgba(231,76,60,0.15); color: #e74c3c; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: 500; }
         .sidebar .sidebar-footer .logout-btn:hover { background: rgba(231,76,60,0.3); }
-        .sidebar .sidebar-footer .logout-btn .icon { font-size: 18px; }
         
         .main { margin-left: 260px; flex: 1; width: calc(100% - 260px); }
-        
         .topbar { background: white; padding: 12px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ecf0f1; }
         .topbar .menu-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: #2c3e50; }
-        .topbar .breadcrumb { color: #7f8c8d; font-size: 14px; }
-        .topbar .breadcrumb span { color: #2c3e50; font-weight: 500; }
-        
         .content { padding: 30px; }
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99; }
-        
         .flash { padding: 12px 15px; margin-bottom: 20px; border-radius: 5px; }
         .success { background: #d5f5e3; color: #27ae60; border: 1px solid #27ae60; }
         .danger { background: #fadbd8; color: #c0392b; border: 1px solid #e74c3c; }
@@ -102,9 +92,6 @@
         <div class="main">
             <div class="topbar">
                 <button class="menu-btn" onclick="openSidebar()">☰</button>
-                <div class="breadcrumb">
-                    {% block page_title %}Dashboard{% endblock %}
-                </div>
             </div>
             
             <div class="content">

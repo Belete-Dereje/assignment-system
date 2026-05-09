@@ -18,7 +18,7 @@
     <h3>{{ assignment[1] }}</h3>
     <p><strong>Course:</strong> {{ assignment[2] }}</p>
     <p><strong>Teacher:</strong> {{ assignment[3] }} {{ assignment[4] }}</p>
-    <p><strong>Deadline:</strong> {{ assignment[5].strftime('%Y-%m-%d %H:%M') }}</p>
+    <p><strong>Deadline:</strong> {{ assignment[5] }}</p>
     {% if assignment[8] %}<p><strong>Comment:</strong> {{ assignment[8] }}</p>{% endif %}
     {% if assignment[9] %}<p><strong>Files:</strong> <a href="/static/uploads/{{ assignment[9].split(',')[0] }}" download>Download</a></p>{% endif %}
 </div>

@@ -1,88 +1,88 @@
-from flask import Flask, redirect, url_for, render_template
+from flask import Flask, redirect, url_for, render_template, request, jsonify
 from config import Config
 from auth import auth_bp, login_manager
 from routes_admin import admin_bp
 from routes_teacher import teacher_bp
 from routes_student import student_bp
-import psycopg2
+import sqlite3
 import os
 
 def init_db():
-    conn = psycopg2.connect(Config.SQLALCHEMY_DATABASE_URI.replace('cockroachdb://', 'postgresql://'))
+    conn = sqlite3.connect('assignments.db')
     cur = conn.cursor()
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            user_id VARCHAR(20) UNIQUE NOT NULL,
-            first_name VARCHAR(50) NOT NULL,
-            last_name VARCHAR(50) NOT NULL,
-            email VARCHAR(120) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            role VARCHAR(20) NOT NULL,
-            is_approved BOOLEAN DEFAULT FALSE,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT UNIQUE NOT NULL,
+            first_name TEXT NOT NULL,
+            last_name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL,
+            is_approved INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS students (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE REFERENCES users(id),
-            department VARCHAR(100) NOT NULL,
+            department TEXT NOT NULL,
             year INTEGER NOT NULL
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS teachers (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE REFERENCES users(id),
-            departments VARCHAR(500) NOT NULL,
-            years VARCHAR(100) NOT NULL,
-            courses VARCHAR(500) NOT NULL
+            departments TEXT NOT NULL,
+            years TEXT NOT NULL,
+            courses TEXT NOT NULL
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS assignments (
-            id SERIAL PRIMARY KEY,
-            title VARCHAR(200) NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
             description TEXT,
             teacher_id INTEGER REFERENCES teachers(id),
-            course_name VARCHAR(100) NOT NULL,
-            department VARCHAR(100) NOT NULL,
+            course_name TEXT NOT NULL,
+            department TEXT NOT NULL,
             year INTEGER NOT NULL,
             deadline TIMESTAMP NOT NULL,
-            late_submission BOOLEAN DEFAULT FALSE,
-            penalty_per_day FLOAT DEFAULT 0.0,
+            late_submission INTEGER DEFAULT 0,
+            penalty_per_day REAL DEFAULT 0.0,
             teacher_comment TEXT,
-            files VARCHAR(1000),
+            files TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS submissions (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             assignment_id INTEGER REFERENCES assignments(id),
             student_id INTEGER REFERENCES students(id),
-            files VARCHAR(1000),
+            files TEXT,
             student_comment TEXT,
             submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP,
-            grade FLOAT,
+            grade REAL,
             feedback TEXT,
             evaluated_at TIMESTAMP,
-            status VARCHAR(20) DEFAULT 'submitted',
+            status TEXT DEFAULT 'submitted',
             complaint TEXT,
-            complaint_status VARCHAR(20)
+            complaint_status TEXT
         )
     """)
     
     cur.execute("""
         CREATE TABLE IF NOT EXISTS allowed_late_submissions (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             assignment_id INTEGER REFERENCES assignments(id),
             student_id INTEGER REFERENCES students(id),
             reason TEXT,
@@ -91,7 +91,6 @@ def init_db():
     """)
     
     conn.commit()
-    cur.close()
     conn.close()
 
 def create_app():
@@ -118,4 +117,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
