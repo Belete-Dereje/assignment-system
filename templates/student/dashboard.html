@@ -47,7 +47,7 @@
         <tr><th>Title</th><th>Course</th><th>Teacher</th><th>Deadline</th><th>Late Policy</th><th>Status</th><th>Action</th></tr>
         {% for a in assignments %}
         <tr>
-            <td><strong>{{ a[1] }}</strong></td>
+            <td><strong>{{ a[1] }}</strong>{% if a[11] %}<br><a href="/static/uploads/{{ a[11].split(",")[0] }}" style="font-size:11px;color:#3498db;">📎 Download</a>{% endif %}</td>
             <td>{{ a[2] }}</td>
             <td>{{ a[3] }} {{ a[4] }}</td>
             <td>{{ a[5] }}</td>

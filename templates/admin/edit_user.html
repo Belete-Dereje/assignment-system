@@ -1,6 +1,5 @@
 {% extends "admin_base.html" %}
 {% block title %}Edit User{% endblock %}
-{% block page_title %}Edit User{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -13,35 +12,40 @@
     .btn-cancel { padding: 12px 25px; background: #6c757d; color: white; text-decoration: none; border-radius: 8px; display: inline-block; margin-left: 10px; }
     .checkbox-label { display: flex; align-items: center; gap: 8px; }
     .checkbox-label input { width: auto; }
+    .info-text { color: #7f8c8d; font-size: 13px; margin-top: 5px; }
 </style>
 {% endblock %}
 
 {% block content %}
+<a href="javascript:history.back()" style="display:inline-block;margin-bottom:20px;color:#e74c3c;text-decoration:none;font-size:14px;">← Back</a>
 <div class="form-container">
-    <h3 style="margin-bottom:25px;">✏️ Edit User: {{ user[2] }} {{ user[3] }}</h3>
-    
+    <h3 style="margin-bottom:25px;">Edit User: {{ user[2] }} {{ user[3] }}</h3>
     <form method="POST">
         <div class="form-group">
             <label>User ID</label>
             <input type="text" value="{{ user[1] }}" disabled style="background:#f0f0f0;">
+            <p class="info-text">ID cannot be changed</p>
         </div>
         <div class="form-group">
-            <label>First Name</label>
+            <label>First Name *</label>
             <input type="text" name="first_name" value="{{ user[2] }}" required>
         </div>
         <div class="form-group">
-            <label>Last Name</label>
+            <label>Last Name *</label>
             <input type="text" name="last_name" value="{{ user[3] }}" required>
         </div>
         <div class="form-group">
-            <label>Email</label>
+            <label>Email *</label>
             <input type="email" name="email" value="{{ user[4] }}" required>
+        </div>
+        <div class="form-group">
+            <label>Role</label>
+            <input type="text" value="{{ user[5] }}" disabled style="background:#f0f0f0;">
         </div>
         <div class="form-group">
             <label>New Password (leave blank to keep current)</label>
             <input type="password" name="password" placeholder="Enter new password" minlength="6">
         </div>
-        
         {% if user[5] == 'student' and student_data %}
         <div class="form-group">
             <label>Department</label>
@@ -65,15 +69,13 @@
             <input type="text" name="courses" value="{{ teacher_data[2] }}">
         </div>
         {% endif %}
-        
         <div class="form-group">
             <label class="checkbox-label">
                 <input type="checkbox" name="is_active" {% if user[6] %}checked{% endif %}>
                 <span>User is active (can login)</span>
             </label>
         </div>
-        
-        <button type="submit" class="btn-submit">💾 Save Changes</button>
+        <button type="submit" class="btn-submit">Save Changes</button>
         <a href="/admin/users" class="btn-cancel">Cancel</a>
     </form>
 </div>

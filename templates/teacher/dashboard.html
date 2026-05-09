@@ -18,22 +18,16 @@
     .btn-danger { background: #e74c3c; }
     select { padding: 10px; border: 1px solid #ddd; border-radius: 5px; width: 100%; max-width: 400px; margin: 10px 0; }
     .stat-box { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #3498db; }
-    .stat-box h4 { margin-bottom: 8px; color: #2c3e50; }
-    .student-list { max-height: 350px; overflow-y: auto; }
-    .student-item { padding: 8px 12px; margin: 3px 0; background: #f8f9fa; border-radius: 5px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; }
-    .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
-    .badge-submitted { background: #f39c12; color: black; }
-    .badge-evaluated { background: #27ae60; }
-    .badge-late { background: #e74c3c; }
-    .badge-not { background: #bdc3c7; color: #555; }
+    .tab-buttons { display: flex; gap: 5px; margin: 15px 0; }
+    .tab-btn { padding: 10px 20px; border: none; background: #e8e8e8; cursor: pointer; border-radius: 5px 5px 0 0; font-size: 13px; }
+    .tab-btn.active { background: #3498db; color: white; }
+    .tab-content { display: none; background: white; padding: 20px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .tab-content.active { display: block; }
     h2 { color: #2c3e50; margin-bottom: 20px; }
-    h3 { color: #2c3e50; margin-bottom: 15px; }
 </style>
 {% endblock %}
 
 {% block content %}
-
-<!-- Dashboard Panel -->
 <div class="section-panel active" id="panel-dashboard">
     <h2>📊 Dashboard</h2>
     <div class="cards">
@@ -44,16 +38,13 @@
     </div>
 </div>
 
-<!-- My Assignments Panel -->
 <div class="section-panel" id="panel-assignments">
     <h2>📝 My Assignments</h2>
     <table>
         <tr><th>Title</th><th>Course</th><th>Dept</th><th>Year</th><th>Deadline</th><th>Actions</th></tr>
         {% for a in assignments %}
         <tr>
-            <td><strong>{{ a[1] }}</strong></td>
-            <td>{{ a[2] }}</td><td>{{ a[3] }}</td><td>{{ a[4] }}</td>
-            <td>{{ a[5] }}</td>
+            <td><strong>{{ a[1] }}</strong></td><td>{{ a[2] }}</td><td>{{ a[3] }}</td><td>{{ a[4] }}</td><td>{{ a[5] }}</td>
             <td>
                 <a href="/teacher/submissions/{{ a[0] }}" class="btn btn-success btn-sm">📥 Submissions</a>
                 <a href="/teacher/edit-assignment/{{ a[0] }}" class="btn btn-primary btn-sm">✏️ Edit</a>
@@ -64,47 +55,68 @@
     </table>
 </div>
 
-<!-- Statistics Panel -->
 <div class="section-panel" id="panel-statistics">
     <h2>📈 Statistics</h2>
     <select id="statsSelect" onchange="loadAssignmentStats()">
-        <option value="">-- Select an Assignment --</option>
-        {% for a in assignments %}
-        <option value="{{ a[0] }}">{{ a[1] }}</option>
-        {% endfor %}
+        <option value="">-- Select Assignment --</option>
+        {% for a in assignments %}<option value="{{ a[0] }}">{{ a[1] }}</option>{% endfor %}
     </select>
-    <div id="statsResult" style="margin-top:20px;">
-        <p style="color:#95a5a6;">Select an assignment to see detailed statistics</p>
-    </div>
+    <div id="statsResult" style="margin-top:20px;"><p style="color:#95a5a6;">Select an assignment to see detailed statistics</p></div>
 </div>
 
 <script>
-    function loadAssignmentStats() {
-        var id = document.getElementById('statsSelect').value;
-        var result = document.getElementById('statsResult');
-        if (!id) { result.innerHTML = '<p style="color:#95a5a6;">Select an assignment to see detailed statistics</p>'; return; }
-        result.innerHTML = '<p>Loading...</p>';
-        fetch('/teacher/stats/' + id)
-        .then(r => r.json())
-        .then(d => {
-            var h = '<div class="stat-box"><h4>📋 Assignment Summary</h4>';
-            h += '<p><strong>Total Students:</strong> ' + d.total_students + '</p>';
-            h += '<p><strong>Submitted:</strong> ' + d.submitted_count + ' | <strong>Not Submitted:</strong> ' + d.not_submitted_count + '</p>';
-            h += '<p><strong>Evaluated:</strong> ' + d.evaluated_count + ' | <strong>Late:</strong> ' + d.late_count + '</p>';
-            h += '<p><strong>Average Grade:</strong> ' + (d.avg_grade ? d.avg_grade + '%' : 'N/A') + '</p></div>';
-            h += '<h4 style="margin-top:20px;">👨‍🎓 Students</h4><div class="student-list">';
-            d.students.forEach(function(s) {
-                var bc = 'badge-not';
-                if (s.status === 'submitted') bc = 'badge-submitted';
-                else if (s.status === 'evaluated') bc = 'badge-evaluated';
-                else if (s.status === 'late') bc = 'badge-late';
-                h += '<div class="student-item"><span><strong>' + s.name + '</strong> (' + s.user_id + ')</span><span class="badge ' + bc + '">' + s.status + '</span>';
-                if (s.grade) h += ' <span style="font-weight:bold;">' + s.grade + '%</span>';
-                h += '</div>';
+function loadAssignmentStats() {
+    var id = document.getElementById('statsSelect').value;
+    var result = document.getElementById('statsResult');
+    if (!id) { result.innerHTML = '<p style="color:#95a5a6;">Select an assignment to see statistics</p>'; return; }
+    result.innerHTML = '<p>Loading...</p>';
+    fetch('/teacher/stats/' + id)
+    .then(r => r.json())
+    .then(d => {
+        var h = '<div class="stat-box"><h4>📋 Summary</h4>';
+        h += '<p><strong>Total:</strong> ' + d.total_students + ' | <strong>Submitted:</strong> ' + d.submitted_count + ' | <strong>Not:</strong> ' + d.not_submitted_count + ' | <strong>Evaluated:</strong> ' + d.evaluated_count + ' | <strong>Late:</strong> ' + d.late_count + '</p>';
+        h += '<p><strong>Average Grade:</strong> ' + (d.avg_grade ? d.avg_grade + '%' : 'N/A') + '</p></div>';
+        
+        h += '<div class="tab-buttons">';
+        h += '<button class="tab-btn active" onclick="showTab(event,\'all\')">All</button>';
+        h += '<button class="tab-btn" onclick="showTab(event,\'submitted\')">Submitted</button>';
+        h += '<button class="tab-btn" onclick="showTab(event,\'not-submitted\')">Not Submitted</button>';
+        h += '<button class="tab-btn" onclick="showTab(event,\'evaluated\')">Evaluated</button>';
+        h += '</div>';
+        
+        function makeTable(students, filter) {
+            var rows = '';
+            students.forEach(function(s) {
+                var show = false;
+                if (filter === 'all') show = true;
+                else if (filter === 'submitted' && (s.status === 'submitted' || s.status === 'late')) show = true;
+                else if (filter === 'not-submitted' && s.status === 'not_submitted') show = true;
+                else if (filter === 'evaluated' && s.status === 'evaluated') show = true;
+                
+                if (show) {
+                    rows += '<tr><td>' + s.user_id + '</td><td>' + s.name + '</td><td>' + s.status + '</td><td>' + (s.grade ? s.grade + '%' : '-') + '</td><td>' + (s.feedback ? s.feedback.substring(0,60) : '-') + '</td>';
+                    if (filter === 'evaluated') rows += '<td>' + (s.complaint ? s.complaint.substring(0,50) : '-') + '</td>';
+                    rows += '</tr>';
+                }
             });
-            h += '</div>';
-            result.innerHTML = h;
-        });
-    }
+            if (rows === '') rows = '<tr><td colspan="6" style="text-align:center;color:#999;">No students</td></tr>';
+            return '<table><tr><th>ID</th><th>Name</th><th>Status</th><th>Grade</th><th>Feedback</th>' + (filter === 'evaluated' ? '<th>Complaint</th>' : '') + '</tr>' + rows + '</table>';
+        }
+        
+        h += '<div class="tab-content active" id="tab-all">' + makeTable(d.students, 'all') + '</div>';
+        h += '<div class="tab-content" id="tab-submitted">' + makeTable(d.students, 'submitted') + '</div>';
+        h += '<div class="tab-content" id="tab-not-submitted">' + makeTable(d.students, 'not-submitted') + '</div>';
+        h += '<div class="tab-content" id="tab-evaluated">' + makeTable(d.students, 'evaluated') + '</div>';
+        
+        result.innerHTML = h;
+    });
+}
+
+function showTab(evt, tabName) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+    evt.target.classList.add('active');
+}
 </script>
 {% endblock %}

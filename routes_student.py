@@ -113,7 +113,23 @@ def submit(assignment_id):
                 filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
                 file.save(filepath)
                 file_paths.append(filename)
+                uploaded_files = request.files.getlist('submission_files')
+        file_paths = []
+        for file in uploaded_files:
+            if file.filename:
+                filename = f"sub_{datetime.now().timestamp()}_{file.filename}"
+                filepath = os.path.join(Config.UPLOAD_FOLDER, filename)
+                file.save(filepath)
+                file_paths.append(filename)
         
+        files_str = ','.join(file_paths) if file_paths else (existing['files'] if existing else '')
+        comment = request.form.get('comment', '').strip()
+        
+        # NEW: Require file upload
+        if not files_str and not comment:
+            flash('You must upload a file or write a comment!', 'danger')
+            conn.close()
+            return render_template('student/submit.html', assignment=assignment, existing=existing, now=datetime.now())
         files_str = ','.join(file_paths) if file_paths else (existing['files'] if existing else '')
         comment = request.form.get('comment', '').strip()
         deadline = datetime.strptime(assignment['deadline'], '%Y-%m-%d %H:%M:%S') if assignment['deadline'] else datetime.now()

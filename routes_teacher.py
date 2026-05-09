@@ -224,7 +224,7 @@ def view_submissions(assignment_id):
     
     cur.execute("""
         SELECT s.id, s.student_id, u.first_name, u.last_name, u.user_id, 
-               s.status, s.grade, s.feedback, s.submitted_at, s.files, s.student_comment
+               s.status, s.grade, s.feedback, s.submitted_at, s.files, s.student_comment, s.complaint, s.complaint_status
         FROM submissions s
         JOIN students st ON s.student_id = st.id
         JOIN users u ON st.user_id = u.id
@@ -320,9 +320,9 @@ def get_stats(assignment_id):
     """, (assignment['department'], assignment['year']))
     all_students = cur.fetchall()
     
-    cur.execute("SELECT student_id, status, grade, feedback FROM submissions WHERE assignment_id = ?", (assignment_id,))
+    cur.execute("SELECT student_id, status, grade, feedback, complaint FROM submissions WHERE assignment_id = ?", (assignment_id,))
     submissions = cur.fetchall()
-    submission_dict = {s[0]: s for s in submissions}
+    submission_dict = {s[0]: (s[1], s[2], s[3], s[4]) for s in submissions}
     
     total = len(all_students)
     submitted_count = len(submissions)
@@ -337,12 +337,12 @@ def get_stats(assignment_id):
     for student in all_students:
         sid = student[0]
         sub = submission_dict.get(sid)
-        students_data.append({
+        students_data.append({'complaint': sub[3] if sub and sub[3] else None,
             'name': f"{student[1]} {student[2]}",
             'user_id': student[3],
-            'status': sub[1] if sub else 'not_submitted',
-            'grade': sub[2] if sub else None,
-            'feedback': sub[3] if sub else None
+            'status': sub[0] if sub else 'not_submitted',
+            'grade': sub[1] if sub else None,
+            'feedback': sub[2] if sub else None
         })
     
     conn.close()
@@ -369,6 +369,7 @@ def evaluate(submission_id):
     
     cur.execute("""
         SELECT s.id, s.grade, s.feedback, s.status, s.files, s.student_comment,
+               s.complaint, s.complaint_status,
                u.first_name, u.last_name, u.user_id, a.title, a.id as assignment_id
         FROM submissions s
         JOIN students st ON s.student_id = st.id
@@ -383,8 +384,7 @@ def evaluate(submission_id):
         feedback = request.form.get('feedback', '').strip()
         
         cur.execute("""
-            UPDATE submissions SET grade = ?, feedback = ?, status = 'evaluated', evaluated_at = ?
-            WHERE id = ?
+            UPDATE submissions SET grade = ?, feedback = ?, status = 'evaluated', complaint_status = 'responded', evaluated_at = ? WHERE id = ?
         """, (grade, feedback, datetime.now(), submission_id))
         
         conn.commit()

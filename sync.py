@@ -24,4 +24,4 @@ while True:
     except Exception as e:
         print(f"[{time.strftime('%H:%M:%S')}] ❌ {str(e)[:50]}")
     
-    time.sleep(10)
+    time.sleep(5)

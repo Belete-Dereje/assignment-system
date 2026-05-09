@@ -9,8 +9,11 @@
     tr:hover { background: #f8f9fa; }
     .btn { padding: 8px 14px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; color: white; font-size: 13px; }
     .btn-warning { background: #f39c12; color: black; }
-    .complaint-form { display: none; margin-top: 10px; }
+    .btn-success { background: #27ae60; }
+    .complaint-form { display: none; margin-top: 10px; background: #f9f9f9; padding: 15px; border-radius: 8px; }
     textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+    .response-box { background: #d5f5e3; padding: 10px; border-radius: 8px; margin-top: 8px; border: 1px solid #27ae60; }
+    .complaint-badge { background: #e74c3c; color: white; padding: 3px 10px; border-radius: 10px; font-size: 11px; }
 </style>
 <script>
     function showComplaint(id) {
@@ -29,21 +32,37 @@
     {% for g in grades %}
     <tr>
         <td>{{ g[0] }}</td><td>{{ g[1] }}</td><td>{{ g[2] }} {{ g[3] }}</td>
-        <td>{{ g[4] if g[4] is not none else '-' }}</td>
-        <td>{{ g[5] if g[5] else '-' }}</td><td>{{ g[6] }}</td>
+        <td><strong>{{ g[4] if g[4] is not none else '-' }}</strong></td>
+        <td>
+            {% if g[5] %}
+                {{ g[5] }}
+            {% else %}
+                <span style="color:#999;">No feedback yet</span>
+            {% endif %}
+        </td>
+        <td>{{ g[6] }}</td>
         <td>
             {% if g[6] == 'evaluated' and g[4] is not none %}
                 {% if g[9] %}
-                    <span style="color: {{ 'orange' if g[10] == 'pending' else 'green' }};">{{ g[10] }}</span>
+                    <span class="complaint-badge">📢 Complained</span>
+                    {% if g[10] == 'responded' %}
+                        <div class="response-box">
+                            <strong>Response:</strong> {{ g[9] }}
+                        </div>
+                    {% else %}
+                        <br><small style="color:#f39c12;">Pending response...</small>
+                    {% endif %}
                 {% else %}
-                    <button class="btn btn-warning" onclick="showComplaint({{ g[8] }})">Complain</button>
+                    <button class="btn btn-warning" onclick="showComplaint({{ g[8] }})">📢 Complain</button>
                     <div id="complaint-{{ g[8] }}" class="complaint-form">
                         <form method="POST" action="/student/complain/{{ g[8] }}">
-                            <textarea name="complaint" rows="3" placeholder="Explain why..." required></textarea>
+                            <textarea name="complaint" rows="3" placeholder="Explain why you are not satisfied..." required></textarea>
                             <button type="submit" class="btn btn-warning">Submit Complaint</button>
                         </form>
                     </div>
                 {% endif %}
+            {% else %}
+                <small style="color:#999;">Available after evaluation</small>
             {% endif %}
         </td>
     </tr>
