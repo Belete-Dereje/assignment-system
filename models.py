@@ -65,6 +65,7 @@ class Assignment(db.Model):
     deadline = db.Column(db.DateTime, nullable=False)
     late_submission = db.Column(db.Boolean, default=False)
     penalty_per_day = db.Column(db.Float, default=0.0)
+    max_score = db.Column(db.Float, default=100.0)
     teacher_comment = db.Column(db.Text)
     files = db.Column(db.String(1000))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -39,12 +39,13 @@
         <div class="card card-unsubmitted"><h3>{{ unsubmitted }}</h3><p>Unsubmitted</p></div>
         <div class="card card-overdue"><h3>{{ overdue }}</h3><p>Overdue</p></div>
     </div>
+    
 </div>
 
 <div class="section-panel" id="panel-assignments">
     <h2>My Assignments</h2>
     <table>
-        <tr><th>Title</th><th>Course</th><th>Teacher</th><th>Deadline</th><th>Late Policy</th><th>Status</th><th>Action</th></tr>
+        <tr><th>Title</th><th>Course</th><th>Teacher</th><th>Deadline</th><th>Late Policy</th><th>Weight (current / max)</th><th>Status</th><th>Action</th></tr>
         {% for a in assignments %}
         <tr>
             <td><strong>{{ a[1] }}</strong>{% if a[11] %}<br><a href="/static/uploads/{{ a[11].split(",")[0] }}" style="font-size:11px;color:#3498db;">📎 Download</a>{% endif %}</td>
@@ -52,6 +53,7 @@
             <td>{{ a[3] }} {{ a[4] }}</td>
             <td>{{ a[5] }}</td>
             <td>{{ 'Late: ' ~ a[7] ~ '%/day' if a[6] else 'Not allowed' }}</td>
+            <td><strong>{{ '%.2f'|format(weights[a[0]]) }} / {{ a[12] if a[12] is not none else 100 }}</strong></td>
             <td>
                 {% if a[0] in submission_dict %}
                     <span class="status-badge status-{{ submission_dict[a[0]][1] }}">{{ submission_dict[a[0]][1] }}</span>

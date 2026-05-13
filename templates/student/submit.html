@@ -11,8 +11,41 @@
 </style>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+    (function(){
+        var toggle = document.getElementById('teamToggle');
+        var menu = document.getElementById('teamMenu');
+        var checkboxes = document.querySelectorAll('.team-checkbox');
+        var countEl = document.getElementById('teamCount');
+        var maxAllowed = {{ assignment['max_group_size'] if assignment['max_group_size'] else 2 }};
+        if (toggle && menu) {
+            toggle.addEventListener('click', function(e){ e.stopPropagation(); menu.style.display = (menu.style.display==='none') ? 'block' : 'none'; });
+            document.addEventListener('click', function(){ menu.style.display = 'none'; });
+            menu.addEventListener('click', function(e){ e.stopPropagation(); });
+        }
+        function updateCount(){
+            var checked = document.querySelectorAll('.team-checkbox:checked').length;
+            // include current student automatically
+            var total = checked + 1;
+            countEl.textContent = '(' + total + ')';
+            // compute how many teammates may be selected (exclude submitter)
+            var maxTeammates = Math.max(0, maxAllowed - 1);
+            // enable/disable remaining
+            if (checked >= maxTeammates){
+                document.querySelectorAll('.team-checkbox:not(:checked)').forEach(function(cb){ cb.disabled = true; cb.parentNode.style.opacity = 0.6; });
+            } else {
+                document.querySelectorAll('.team-checkbox').forEach(function(cb){ cb.disabled = false; cb.parentNode.style.opacity = 1; });
+            }
+        }
+        checkboxes.forEach(function(cb){ cb.addEventListener('change', updateCount); });
+        // always update initial count (submitter included)
+        updateCount();
+    })();
+</script>
+{% endblock %}
+
 {% block content %}
-<a href="javascript:history.back()" style="display:inline-block;margin-bottom:20px;color:#3498db;text-decoration:none;font-size:14px;">← Back</a>
 <h2>Submit Assignment</h2>
 
 <div class="details">
@@ -20,6 +53,8 @@
     <p><strong>Course:</strong> {{ assignment[2] }}</p>
     <p><strong>Teacher:</strong> {{ assignment[3] }} {{ assignment[4] }}</p>
     <p><strong>Deadline:</strong> {{ assignment[5] }}</p>
+    <p><strong>Max Score:</strong> {{ max_score if max_score is not none else (assignment[12] if assignment[12] is not none else 100) }}</p>
+    <p><strong>Current Value:</strong> {{ '%.2f'|format(current_value) if current_value is not none else (max_score if max_score is not none else (assignment[12] if assignment[12] is not none else 100)) }}</p>
     {% if assignment[8] %}<p><strong>Comment:</strong> {{ assignment[8] }}</p>{% endif %}
     {% if assignment[9] %}<p><strong>Files:</strong> <a href="/static/uploads/{{ assignment[9].split(',')[0] }}" download>Download</a></p>{% endif %}
 </div>
@@ -31,6 +66,29 @@
 {% endif %}
 
 <form method="POST" enctype="multipart/form-data">
+    {% if assignment['is_group'] %}
+    <label>Select Teammates (choose up to {{ assignment['max_group_size'] or 2 }})</label>
+    <div class="team-dropdown" style="position:relative; margin-bottom:10px;">
+        <button type="button" id="teamToggle" class="btn" style="background:#fff;color:#2c3e50;border:1px solid #ddd;">Select teammates <span id="teamCount" style="font-weight:700;margin-left:8px;">(0)</span></button>
+        <div id="teamMenu" style="display:none; position:absolute; z-index:1200; background:#fff; border:1px solid #e8e8e8; box-shadow:0 8px 20px rgba(0,0,0,0.08); width:320px; max-height:260px; overflow:auto; border-radius:6px; padding:8px;">
+            {% if current_student %}
+            <label style="display:flex; align-items:center; gap:8px; padding:6px; border-radius:4px; background:#f5f6f8;">
+                <input type="checkbox" checked disabled class="self-checkbox"> <span style="flex:1;"><strong>You: {{ current_student[1] }} {{ current_student[2] }}</strong> <small style="color:#7f8c8d;">({{ current_student[3] }} - Year {{ current_student[4] }})</small></span>
+            </label>
+            <hr style="border:none;border-top:1px solid #eee;margin:6px 0;">
+            {% endif %}
+            {% for s in (teammates_list if teammates_list is defined else []) %}
+            <label style="display:flex; align-items:center; gap:8px; padding:6px; border-radius:4px; cursor:pointer;">
+                <input type="checkbox" name="teammates" value="{{ s[0] }}" class="team-checkbox" {% if selected_ids and s[0] in selected_ids %}checked{% endif %}> <span style="flex:1;">{{ s[1] }} {{ s[2] }} <small style="color:#7f8c8d;">({{ s[3] }} - Year {{ s[4] }})</small></span>
+            </label>
+            {% endfor %}
+            {% if not teammates_list %}
+            <div style="padding:8px;color:#7f8c8d;">No available teammates</div>
+            {% endif %}
+        </div>
+    </div>
+    <small>You will be included automatically. Selected teammates cannot be chosen by others.</small>
+    {% endif %}
     <label>Upload Files (video, audio, documents)</label>
     <input type="file" name="submission_files" multiple>
     <label>Comment (optional)</label>
@@ -38,5 +96,5 @@
     <button type="submit">{% if existing %}Update Submission{% else %}Submit Assignment{% endif %}</button>
 </form>
 
-<br><a href="/student/dashboard" class="btn-back">Back to Dashboard</a>
+ 
 {% endblock %}

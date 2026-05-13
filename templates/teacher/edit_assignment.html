@@ -60,7 +60,6 @@
 {% endblock %}
 
 {% block content %}
-<a href="javascript:history.back()" style="display:inline-block;margin-bottom:20px;color:#3498db;text-decoration:none;font-size:14px;">← Back</a>
 <div class="page-header">
     <h2>✏️ Edit Assignment</h2>
     <p>Update the assignment details below</p>
@@ -83,6 +82,12 @@
             <div class="form-group">
                 <label>Title <span class="required">*</span></label>
                 <input type="text" name="title" value="{{ assignment[1] }}" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Max Score <span class="required">*</span></label>
+                <input type="number" name="max_score" value="{{ assignment['max_score'] if assignment['max_score'] is not none else 100 }}" min="1" step="0.5" required>
             </div>
         </div>
         
@@ -134,6 +139,20 @@
                     <button type="button" class="toggle-btn {{ 'active' if assignment[7] }}" onclick="toggleLate('yes')" id="lateYes">✅ Allowed</button>
                 </div>
                 <input type="hidden" name="late_submission" id="lateInput" value="{{ 'yes' if assignment[7] else 'no' }}">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Assignment Type</label>
+                <div class="toggle-option">
+                    <button type="button" class="toggle-btn {{ 'active' if not assignment['is_group'] }}" onclick="toggleGroup('individual')" id="groupInd">👤 Individual</button>
+                    <button type="button" class="toggle-btn {{ 'active' if assignment['is_group'] }}" onclick="toggleGroup('group')" id="groupBtn">👥 Group</button>
+                </div>
+                <input type="hidden" name="is_group" id="groupInput" value="{{ 'yes' if assignment['is_group'] else 'no' }}">
+            </div>
+            <div class="form-group" id="groupOptions" style="display:{{ 'block' if assignment['is_group'] else 'none' }};">
+                <label>Max Group Size</label>
+                <input type="number" name="max_group_size" value="{{ assignment['max_group_size'] if assignment['max_group_size'] else 2 }}" min="2" step="1">
             </div>
         </div>
         
@@ -193,5 +212,26 @@
         document.getElementById('lateYes').classList.toggle('active', val === 'yes');
         document.getElementById('penaltyGroup').classList.toggle('show', val === 'yes');
     }
+    function toggleGroup(kind) {
+        var inp = document.getElementById('groupInput');
+        var ind = document.getElementById('groupInd');
+        var btn = document.getElementById('groupBtn');
+        var opts = document.getElementById('groupOptions');
+        if (!inp || !ind || !btn || !opts) return;
+        inp.value = (kind === 'group') ? 'yes' : 'no';
+        ind.classList.toggle('active', kind === 'individual');
+        btn.classList.toggle('active', kind === 'group');
+        opts.style.display = (kind === 'group') ? 'block' : 'none';
+    }
+    document.addEventListener('DOMContentLoaded', function(){
+        var ind = document.getElementById('groupInd');
+        var grp = document.getElementById('groupBtn');
+        var input = document.getElementById('groupInput');
+        if (ind && grp && input) {
+            ind.addEventListener('click', function(e){ e.preventDefault(); toggleGroup('individual'); });
+            grp.addEventListener('click', function(e){ e.preventDefault(); toggleGroup('group'); });
+            if (input.value === 'yes') toggleGroup('group'); else toggleGroup('individual');
+        }
+    });
 </script>
 {% endblock %}

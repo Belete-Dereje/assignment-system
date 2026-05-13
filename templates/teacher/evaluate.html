@@ -18,36 +18,51 @@
 <h2>Evaluate Submission</h2>
 
 <div class="details">
-    <p><strong>Student:</strong> {{ submission[8] }} {{ submission[9] }}</p>
-    <p><strong>Student ID:</strong> {{ submission[10] }}</p>
-    <p><strong>Assignment:</strong> {{ submission[11] }}</p>
-    <p><strong>Status:</strong> {{ submission[3] }}</p>
-    {% if submission[5] %}
-    <p><strong>Student Comment:</strong> "{{ submission[5] }}"</p>
+    <p><strong>Student:</strong> {{ submission['first_name'] }} {{ submission['last_name'] }}</p>
+    <p><strong>Student ID:</strong> {{ submission['user_id'] }}</p>
+    <p><strong>Assignment:</strong> {{ submission['title'] }}</p>
+    <p><strong>Max Score:</strong> {{ submission['max_score'] if submission['max_score'] is not none else 100 }}</p>
+    <p><strong>Current Value:</strong> {{ '%.2f'|format(current_value) if current_value is not none else (submission['max_score'] if submission['max_score'] is not none else 100) }}</p>
+    <p><strong>Status:</strong> {{ submission['status'] }}</p>
+    {% if group_members and group_members|length > 0 %}
+    <p style="color:#27ae60;"><strong>Group grading:</strong> This score will be applied to all group members.</p>
     {% endif %}
-    {% if submission[4] %}
+    {% if submission['student_comment'] %}
+    <p><strong>Student Comment:</strong> "{{ submission['student_comment'] }}"</p>
+    {% endif %}
+    {% if submission['files'] %}
     <p><strong>Files:</strong> 
-        {% for file in submission[4].split(',') %}
+        {% for file in submission['files'].split(',') %}
             <a href="/teacher/download/{{ file.strip() }}" style="color:#3498db;">📥 Download</a>
         {% endfor %}
     </p>
     {% endif %}
 </div>
 
-{% if submission[6] %}
+{% if submission['complaint'] %}
 <div class="complaint-box">
     <h4>📢 Student Complaint</h4>
-    <div class="complaint-text">"{{ submission[6] }}"</div>
-    <p style="color:#f39c12; font-size:13px; margin-top:10px;">Status: {{ submission[7] }}</p>
+    <div class="complaint-text">"{{ submission['complaint'] }}"</div>
+    <p style="color:#f39c12; font-size:13px; margin-top:10px;">Status: {{ submission['complaint_status'] }}</p>
+</div>
+{% endif %}
+
+{% if group_members and group_members|length > 0 %}
+<div class="details" style="margin-top:10px;">
+    <p><strong>Group Members:</strong>
+        {% for m in group_members %}
+            {{ m[1] }} {{ m[2] }} ({{ m[3] }}){% if not loop.last %}, {% endif %}
+        {% endfor %}
+    </p>
 </div>
 {% endif %}
 
 <form method="POST">
-    <label>Grade * (0-100)</label>
-    <input type="number" name="grade" value="{{ submission[1] if submission[1] else '' }}" min="0" max="100" step="0.5" required>
+    <label>Grade *</label>
+    <input type="number" name="grade" value="{{ submission['grade'] if submission['grade'] is not none else '' }}" min="0" max="{{ '%.2f'|format(current_value) if current_value is not none else (submission['max_score'] if submission['max_score'] is not none else 100) }}" step="0.5" required>
     
     <label>Feedback *</label>
-    <textarea name="feedback" rows="6" required>{{ submission[2] if submission[2] else '' }}</textarea>
+    <textarea name="feedback" rows="6" required>{{ submission['feedback'] if submission['feedback'] else '' }}</textarea>
     <small style="color:#666;">Your feedback will be visible to the student</small>
     
     <button type="submit">💾 Save Evaluation</button>

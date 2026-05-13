@@ -36,6 +36,9 @@
         
         .topbar { background: white; padding: 12px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ecf0f1; }
         .topbar .menu-btn { display: none; background: none; border: none; font-size: 24px; cursor: pointer; color: #2c3e50; }
+        .back-btn { background: #3498db; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 16px; margin-right: 12px; display: inline-flex; align-items: center; justify-content: center; width:36px; height:36px; }
+        .back-btn .back-icon { font-weight: 700; font-size: 18px; line-height: 1; }
+        .back-btn.hidden { display: none; }
         .topbar .breadcrumb { color: #7f8c8d; font-size: 14px; }
         .topbar .breadcrumb span { color: #2c3e50; font-weight: 500; }
         
@@ -105,6 +108,9 @@
         <div class="main">
             <div class="topbar">
                 <button class="menu-btn" onclick="openSidebar()">☰</button>
+                {% if request.path != '/teacher/dashboard' %}
+                <button id="back-btn" class="back-btn" onclick="goBack()"><span class="back-icon">←</span></button>
+                {% endif %}
                 <div class="breadcrumb">
                     {% block page_title %}Dashboard{% endblock %}
                 </div>
@@ -119,7 +125,6 @@
                     {% endif %}
                 {% endwith %}
                 
-    <a href="/teacher/dashboard" style="position:fixed;bottom:20px;left:280px;background:#3498db;color:white;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:14px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,0.2);">← Back to Dashboard</a>
                 {% block content %}{% endblock %}
             </div>
         </div>
@@ -163,6 +168,15 @@
                 else showPanel('dashboard');
             }
         });
+    </script>
+
+    <script>
+        function goBack() {
+            try {
+                if (history.length > 1) return history.back();
+            } catch (e) {}
+            window.location.href = '/teacher/dashboard';
+        }
     </script>
 </body>
 </html>

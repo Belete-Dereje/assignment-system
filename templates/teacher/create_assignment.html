@@ -8,7 +8,6 @@
     .page-header p { color: #7f8c8d; font-size: 14px; }
     
     .form-container { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 35px; max-width: 800px; }
-    
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 20px; }
     .form-row.full { grid-template-columns: 1fr; }
     .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
@@ -66,7 +65,6 @@
 {% endblock %}
 
 {% block content %}
-<a href="javascript:history.back()" style="display:inline-block;margin-bottom:20px;color:#3498db;text-decoration:none;font-size:14px;">← Back</a>
 <div class="page-header">
     <h2>➕ Create New Assignment</h2>
     <p>Fill in the details below to create a new assignment for your students</p>
@@ -90,6 +88,27 @@
             <div class="form-group">
                 <label>Assignment Title <span class="required">*</span></label>
                 <input type="text" name="title" placeholder="e.g., Database Systems - Assignment 1" required>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Max Score <span class="required">*</span></label>
+                <input type="number" name="max_score" value="100" min="1" step="0.5" required>
+            </div>
+            <div class="form-group">
+                <label>Assignment Type</label>
+                <div class="toggle-option">
+                    <button type="button" class="toggle-btn active" onclick="toggleGroup('individual')" id="groupInd">👤 Individual</button>
+                    <button type="button" class="toggle-btn" onclick="toggleGroup('group')" id="groupBtn">👥 Group</button>
+                </div>
+                <input type="hidden" name="is_group" id="groupInput" value="no">
+            </div>
+        </div>
+        <div class="form-row" id="groupOptions" style="display:none;">
+            <div class="form-group">
+                <label>Max Group Size</label>
+                <input type="number" name="max_group_size" value="2" min="2" step="1">
+                <small>Minimum 2 members for group assignments</small>
             </div>
         </div>
         
@@ -218,6 +237,28 @@
         document.getElementById('lateYes').classList.toggle('active', val === 'yes');
         document.getElementById('penaltyGroup').classList.toggle('show', val === 'yes');
     }
+    function toggleGroup(kind) {
+        var inp = document.getElementById('groupInput');
+        var ind = document.getElementById('groupInd');
+        var btn = document.getElementById('groupBtn');
+        var opts = document.getElementById('groupOptions');
+        if (!inp || !ind || !btn || !opts) return;
+        inp.value = (kind === 'group') ? 'yes' : 'no';
+        ind.classList.toggle('active', kind === 'individual');
+        btn.classList.toggle('active', kind === 'group');
+        opts.style.display = (kind === 'group') ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        var ind = document.getElementById('groupInd');
+        var grp = document.getElementById('groupBtn');
+        var input = document.getElementById('groupInput');
+        if (ind && grp && input) {
+            ind.addEventListener('click', function(e){ e.preventDefault(); toggleGroup('individual'); });
+            grp.addEventListener('click', function(e){ e.preventDefault(); toggleGroup('group'); });
+            if (input.value === 'yes') toggleGroup('group'); else toggleGroup('individual');
+        }
+    });
     
     document.getElementById('fileInput').addEventListener('change', function(e) {
         var list = document.getElementById('fileList');

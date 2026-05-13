@@ -89,6 +89,9 @@ def create_assignment():
         deadline = request.form.get('deadline', '').strip()
         late_submission = 1 if request.form.get('late_submission') == 'yes' else 0
         penalty_per_day = float(request.form.get('penalty_per_day', '0') or 0)
+        max_score = float(request.form.get('max_score', '100') or 100)
+        is_group = 1 if request.form.get('is_group') == 'yes' else 0
+        max_group_size = int(request.form.get('max_group_size', '1') or 1)
         teacher_comment = request.form.get('teacher_comment', '').strip()
         
         if not all([title, course_name, department, year, deadline]):
@@ -120,9 +123,9 @@ def create_assignment():
             files = ','.join(file_paths)
         
         cur.execute("""
-            INSERT INTO assignments (title, description, teacher_id, course_name, department, year, deadline, late_submission, penalty_per_day, teacher_comment, files)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (title, description, teacher_id, course_name, department, int(year), deadline_date, late_submission, penalty_per_day, teacher_comment, files))
+            INSERT INTO assignments (title, description, teacher_id, course_name, department, year, deadline, late_submission, penalty_per_day, max_score, is_group, max_group_size, teacher_comment, files)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (title, description, teacher_id, course_name, department, int(year), deadline_date, late_submission, penalty_per_day, max_score, is_group, max_group_size, teacher_comment, files))
         
         conn.commit()
         conn.close()
@@ -186,12 +189,15 @@ def edit_assignment(assignment_id):
                     new_paths.append(fname)
             files = ','.join(new_paths) if new_paths else ''
         
+        max_score = float(request.form.get('max_score', assignment['max_score'] if assignment['max_score'] else 100) or 100)
+        is_group = 1 if request.form.get('is_group') == 'yes' else 0
+        max_group_size = int(request.form.get('max_group_size', assignment['max_group_size'] if assignment['max_group_size'] else 1) or 1)
         cur.execute("""
             UPDATE assignments SET title=?, description=?, course_name=?, department=?, year=?, 
-            deadline=?, late_submission=?, penalty_per_day=?, teacher_comment=?, files=?
+            deadline=?, late_submission=?, penalty_per_day=?, max_score=?, is_group=?, max_group_size=?, teacher_comment=?, files=?
             WHERE id=?
         """, (title, description, course_name, department, int(year), deadline_date,
-              late_submission, penalty_per_day, teacher_comment, files, assignment_id))
+              late_submission, penalty_per_day, max_score, is_group, max_group_size, teacher_comment, files, assignment_id))
         
         conn.commit()
         conn.close()
@@ -213,7 +219,8 @@ def view_submissions(assignment_id):
     cur = conn.cursor()
     
     cur.execute("""
-        SELECT a.*, a.late_submission, a.penalty_per_day
+        SELECT a.id as id, a.title as title, a.course_name as course_name, a.department as department, a.year as year,
+               a.deadline as deadline, a.late_submission as late_submission, a.penalty_per_day as penalty_per_day, a.max_score as max_score
         FROM assignments a WHERE a.id = ?
     """, (assignment_id,))
     assignment = cur.fetchone()
@@ -224,14 +231,62 @@ def view_submissions(assignment_id):
     
     cur.execute("""
         SELECT s.id, s.student_id, u.first_name, u.last_name, u.user_id, 
-               s.status, s.grade, s.feedback, s.submitted_at, s.files, s.student_comment, s.complaint, s.complaint_status
+               s.status, s.grade, s.feedback, s.submitted_at, s.files, s.student_comment, s.complaint, s.complaint_status, s.group_id
         FROM submissions s
         JOIN students st ON s.student_id = st.id
         JOIN users u ON st.user_id = u.id
         WHERE s.assignment_id = ?
         ORDER BY s.submitted_at DESC
     """, (assignment_id,))
-    submissions = cur.fetchall()
+    raw_submissions = cur.fetchall()
+
+    grouped_submissions = []
+    group_map = {}
+    for submission in raw_submissions:
+        group_id = submission['group_id']
+        if group_id:
+            if group_id not in group_map:
+                group_map[group_id] = {
+                    'submission_id': submission['id'],
+                    'group_id': group_id,
+                    'is_group': True,
+                    'status': submission['status'],
+                    'grade': submission['grade'],
+                    'feedback': submission['feedback'],
+                    'submitted_at': submission['submitted_at'],
+                    'files': submission['files'],
+                    'student_comment': submission['student_comment'],
+                    'complaint': submission['complaint'],
+                    'complaint_status': submission['complaint_status'],
+                    'members': []
+                }
+                grouped_submissions.append(group_map[group_id])
+            group_map[group_id]['members'].append({
+                'student_id': submission['student_id'],
+                'first_name': submission['first_name'],
+                'last_name': submission['last_name'],
+                'user_id': submission['user_id']
+            })
+        else:
+            grouped_submissions.append({
+                'submission_id': submission['id'],
+                'group_id': None,
+                'is_group': False,
+                'status': submission['status'],
+                'grade': submission['grade'],
+                'feedback': submission['feedback'],
+                'submitted_at': submission['submitted_at'],
+                'files': submission['files'],
+                'student_comment': submission['student_comment'],
+                'complaint': submission['complaint'],
+                'complaint_status': submission['complaint_status'],
+                'members': [{
+                    'student_id': submission['student_id'],
+                    'first_name': submission['first_name'],
+                    'last_name': submission['last_name'],
+                    'user_id': submission['user_id']
+                }]
+            })
     
     cur.execute("""
         SELECT st.id, u.first_name, u.last_name, u.user_id
@@ -255,7 +310,7 @@ def view_submissions(assignment_id):
     conn.close()
     
     return render_template('teacher/submissions.html',
-                         assignment=assignment, submissions=submissions,
+                         assignment=assignment, submissions=grouped_submissions,
                          not_submitted=not_submitted, allowed_late_dict=allowed_late_dict)
 
 
@@ -368,9 +423,9 @@ def evaluate(submission_id):
     cur = conn.cursor()
     
     cur.execute("""
-        SELECT s.id, s.grade, s.feedback, s.status, s.files, s.student_comment,
-               s.complaint, s.complaint_status,
-               u.first_name, u.last_name, u.user_id, a.title, a.id as assignment_id
+         SELECT s.id, s.student_id, s.submitted_at, s.grade, s.feedback, s.status, s.group_id, s.files, s.student_comment,
+             s.complaint, s.complaint_status,
+               u.first_name, u.last_name, u.user_id, a.title, a.id as assignment_id, a.deadline, a.penalty_per_day, a.max_score
         FROM submissions s
         JOIN students st ON s.student_id = st.id
         JOIN users u ON st.user_id = u.id
@@ -379,21 +434,72 @@ def evaluate(submission_id):
     """, (submission_id,))
     submission = cur.fetchone()
     
+    # compute current effective max value considering late penalty and allowed_late
+    from math import ceil
+    current_value = None
+    max_score = float(submission['max_score']) if submission['max_score'] is not None else 100.0
+    try:
+        submitted_at = datetime.strptime(submission['submitted_at'], '%Y-%m-%d %H:%M:%S') if submission['submitted_at'] else None
+        deadline_dt = datetime.strptime(submission['deadline'], '%Y-%m-%d %H:%M:%S') if submission['deadline'] else None
+    except Exception:
+        submitted_at = None
+        deadline_dt = None
+
+    days_late = 0
+    if submitted_at and deadline_dt and submitted_at > deadline_dt:
+        seconds = (submitted_at - deadline_dt).total_seconds()
+        days_late = int(ceil(seconds / 86400.0))
+
+    # check allowed late
+    if days_late > 0:
+        cur.execute("SELECT id FROM allowed_late_submissions WHERE assignment_id=? AND student_id=?", (submission['assignment_id'], submission['student_id']))
+        if cur.fetchone():
+            days_late = 0
+
+    penalty = float(submission['penalty_per_day']) if submission['penalty_per_day'] is not None else 0.0
+    current_value = max(0.0, max_score * max(0.0, 1 - (penalty/100.0) * days_late))
+
     if request.method == 'POST':
         grade = float(request.form.get('grade', '0'))
         feedback = request.form.get('feedback', '').strip()
-        
-        cur.execute("""
-            UPDATE submissions SET grade = ?, feedback = ?, status = 'evaluated', complaint_status = 'responded', evaluated_at = ? WHERE id = ?
-        """, (grade, feedback, datetime.now(), submission_id))
-        
+        # enforce boundaries
+        if grade < 0:
+            grade = 0.0
+        if grade > current_value:
+            flash(f'Grade cannot exceed current maximum ({current_value}).', 'danger')
+            conn.close()
+            return redirect(url_for('teacher.evaluate', submission_id=submission_id))
+
+        # if this is a group submission, apply grade to all members in the same group
+        if submission['group_id']:
+            cur.execute("""
+                UPDATE submissions SET grade = ?, feedback = ?, status = 'evaluated', complaint_status = 'responded', evaluated_at = ? WHERE group_id = ?
+            """, (grade, feedback, datetime.now(), submission['group_id']))
+        else:
+            cur.execute("""
+                UPDATE submissions SET grade = ?, feedback = ?, status = 'evaluated', complaint_status = 'responded', evaluated_at = ? WHERE id = ?
+            """, (grade, feedback, datetime.now(), submission_id))
+
         conn.commit()
         conn.close()
         flash('Submission evaluated!', 'success')
         return redirect(url_for('teacher.view_submissions', assignment_id=submission['assignment_id']))
     
+    # if group, fetch group members to display
+    group_members = []
+    if submission['group_id']:
+        cur2 = conn.cursor()
+        cur2.execute("""
+            SELECT st.id, u.first_name, u.last_name, u.user_id
+            FROM submissions s
+            JOIN students st ON s.student_id = st.id
+            JOIN users u ON st.user_id = u.id
+            WHERE s.group_id = ?
+        """, (submission['group_id'],))
+        group_members = cur2.fetchall()
+
     conn.close()
-    return render_template('teacher/evaluate.html', submission=submission)
+    return render_template('teacher/evaluate.html', submission=submission, current_value=current_value, group_members=group_members)
 
 
 @teacher_bp.route('/export-pdf/<int:assignment_id>')

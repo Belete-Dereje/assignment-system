@@ -24,11 +24,12 @@
 <h2>Submissions: {{ assignment[1] }}</h2>
 
 <div class="info-bar">
-    <strong>Course:</strong> {{ assignment[2] }} | 
-    <strong>Dept:</strong> {{ assignment[3] }} | 
-    <strong>Year:</strong> {{ assignment[4] }} | 
-    <strong>Deadline:</strong> {{ assignment[5] }} | 
-    <strong>Late:</strong> {% if assignment[6] %}Penalty {{ assignment[7] }}%/day{% else %}Not Allowed{% endif %}
+    <strong>Course:</strong> {{ assignment['course_name'] }} | 
+    <strong>Dept:</strong> {{ assignment['department'] }} | 
+    <strong>Year:</strong> {{ assignment['year'] }} | 
+    <strong>Deadline:</strong> {{ assignment['deadline'] }} | 
+    <strong>Late:</strong> {% if assignment['late_submission'] %}Penalty {{ assignment['penalty_per_day'] }}%/day{% else %}Not Allowed{% endif %} |
+    <strong>Max Score:</strong> {{ assignment['max_score'] if assignment['max_score'] is not none else 100 }}
 </div>
 
 <!-- Submitted -->
@@ -36,32 +37,87 @@
     <h3>✅ Submitted ({{ submissions|length }})</h3>
     {% if submissions %}
     <table>
-        <tr><th>Student ID</th><th>Name</th><th>Status</th><th>Grade</th><th>Files</th><th>Complaint</th><th>Submitted</th><th>Action</th></tr>
+        <tr><th>Type</th><th>Members</th><th>Status</th><th>Grade</th><th>Files</th><th>Complaint</th><th>Submitted</th><th>Action</th></tr>
         {% for s in submissions %}
         <tr>
-            <td>{{ s[4] }}</td><td>{{ s[2] }} {{ s[3] }}</td><td>{{ s[5] }}</td>
-            <td>{{ s[6] if s[6] else '-' }}</td>
+            <td>{% if s.is_group %}Group{% else %}Individual{% endif %}</td>
             <td>
-                {% if s[9] %}
-                    {% for file in s[9].split(',') %}
+                {% for member in s.members %}
+                    <div>{{ member.first_name }} {{ member.last_name }} <small style="color:#7f8c8d;">({{ member.user_id }})</small></div>
+                {% endfor %}
+            </td>
+            <td>{{ s.status }}</td>
+            <td>{{ s.grade if s.grade else '-' }}</td>
+            <td>
+                {% if s.files %}
+                    {% for file in s.files.split(',') %}
                         <a href="/teacher/download/{{ file.strip() }}" class="btn btn-info">📥</a>
                     {% endfor %}
                 {% else %}-{% endif %}
             </td>
             <td>
-                {% if s|length > 11 and s[11] %}
-                    <span class="complaint-badge" title="{{ s[11] }}">📢</span>
+                {% if s.complaint %}
+                    <span class="complaint-badge" title="{{ s.complaint }}">📢</span>
                 {% else %}-{% endif %}
             </td>
-            <td>{{ s[8] if s[8] else '' }}</td>
+            <td>{{ s.submitted_at if s.submitted_at else '' }}</td>
             <td>
-                <a href="/teacher/evaluate/{{ s[0] }}" class="btn btn-primary">
-                    {% if s[5] == 'evaluated' %}Update{% else %}Evaluate{% endif %}
+                <a href="/teacher/evaluate/{{ s.submission_id }}" class="btn btn-primary">
+                    {% if s.status == 'evaluated' %}Update{% else %}Evaluate{% endif %}
                 </a>
             </td>
         </tr>
         {% endfor %}
     </table>
     {% else %}<p style="color:#95a5a6;">No submissions yet.</p>{% endif %}
+</div>
+
+<!-- Not Submitted / Manage Late -->
+<div class="content-section">
+    <h3>🕓 Not Submitted ({{ not_submitted|length }})</h3>
+    {% if not_submitted %}
+    <form method="POST" action="/teacher/manage-late/{{ assignment['id'] }}">
+        <p>Select students to allow or revoke late submission:</p>
+        <table>
+            <tr><th></th><th>Student ID</th><th>Name</th></tr>
+            {% for ns in not_submitted %}
+            <tr>
+                <td><input type="checkbox" name="student_ids" value="{{ ns[0] }}"></td>
+                <td>{{ ns[3] }}</td>
+                <td>{{ ns[1] }} {{ ns[2] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <div style="margin-top:12px;">
+            <label style="display:block;font-weight:600;margin-bottom:6px;">Reason (for allowing):</label>
+            <textarea name="reason" rows="2" style="width:60%;padding:8px;border:1px solid #ddd;border-radius:6px;"></textarea>
+        </div>
+        <div style="margin-top:12px;">
+            <button type="submit" name="action" value="allow" class="btn btn-success">Allow Late</button>
+            <button type="submit" name="action" value="revoke" class="btn btn-danger">Revoke</button>
+        </div>
+    </form>
+    {% else %}
+    <p style="color:#95a5a6;">No students pending submission.</p>
+    {% endif %}
+</div>
+
+<!-- Allowed Late List -->
+<div class="content-section">
+    <h3>🔓 Allowed Late Submissions</h3>
+    {% if allowed_late_dict %}
+    <table>
+        <tr><th>Student ID</th><th>Name</th><th>Reason</th></tr>
+        {% for sid, a in allowed_late_dict.items() %}
+        <tr>
+            <td>{{ a[2] }}</td>
+            <td>{{ a[3] }}</td>
+            <td>{{ a[1] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p style="color:#95a5a6;">No students currently allowed for late submission.</p>
+    {% endif %}
 </div>
 {% endblock %}

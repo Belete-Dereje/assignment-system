@@ -32,7 +32,7 @@
     {% for g in grades %}
     <tr>
         <td>{{ g[0] }}</td><td>{{ g[1] }}</td><td>{{ g[2] }} {{ g[3] }}</td>
-        <td><strong>{{ g[4] if g[4] is not none else '-' }}</strong></td>
+        <td><strong>{% if g[4] is not none %}{{ g[4] }} / {{ '%.2f'|format(g[11]) }}{% else %}-{% endif %}</strong></td>
         <td>
             {% if g[5] %}
                 {{ g[5] }}
