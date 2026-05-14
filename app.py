@@ -97,10 +97,12 @@ def create_app():
         cur = conn.cursor()
         for table, rows in data.items():
             if rows:
-                cur.execute(f"DELETE FROM {table}")
                 for row in rows:
                     placeholders = ','.join(['?'] * len(row))
-                    cur.execute(f"INSERT INTO {table} VALUES ({placeholders})", row)
+                    try:
+                        cur.execute(f"INSERT OR REPLACE INTO {table} VALUES ({placeholders})", row)
+                    except:
+                        pass
         conn.commit()
         conn.close()
         return jsonify({'status': 'ok'})
