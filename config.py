@@ -5,4 +5,4 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///assignments.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
-    MAX_CONTENT_LENGTH = 200 * 1024 * 1024
+    MAX_CONTENT_LENGTH = None  # No limit on file uploads

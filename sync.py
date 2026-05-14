@@ -6,7 +6,7 @@ import sys
 OTHER = sys.argv[1] if len(sys.argv) > 1 else "10.49.210.216:5000"
 LOCAL = "http://127.0.0.1:5000"
 
-print(f"Syncing with http://{OTHER} every 60 seconds...")
+print(f"Syncing with http://{OTHER} every 5 seconds...")
 
 while True:
     try:
