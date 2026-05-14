@@ -21,7 +21,8 @@ def init_db():
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL,
             is_approved INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
     cur.execute("""CREATE TABLE IF NOT EXISTS students (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER UNIQUE REFERENCES users(id), department TEXT NOT NULL, year INTEGER NOT NULL)""")
@@ -55,6 +56,18 @@ def init_db():
         except Exception:
             pass
     cur.execute("""CREATE TABLE IF NOT EXISTS allowed_late_submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, assignment_id INTEGER REFERENCES assignments(id), student_id INTEGER REFERENCES students(id), reason TEXT, allowed_by INTEGER REFERENCES teachers(id))""")
+    
+    # Migrate: Add updated_at column to users if missing
+    cur.execute("PRAGMA table_info(users)")
+    user_cols = [r[1] for r in cur.fetchall()]
+    if 'updated_at' not in user_cols:
+        try:
+            # SQLite doesn't allow non-constant defaults in ALTER TABLE, so add with NULL default
+            cur.execute("ALTER TABLE users ADD COLUMN updated_at TIMESTAMP")
+            # Set updated_at to created_at for existing records
+            cur.execute("UPDATE users SET updated_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE updated_at IS NULL")
+        except Exception as e:
+            pass
     
     conn.commit()
     conn.close()
@@ -92,17 +105,61 @@ def create_app():
     
     @app.route('/sync/update', methods=['POST'])
     def sync_update():
+        """Merge remote data with local, preserving local changes based on updated_at timestamp."""
         data = request.json
         conn = sqlite3.connect('assignments.db')
         cur = conn.cursor()
+        
         for table, rows in data.items():
-            if rows:
+            if not rows:
+                continue
+            
+            # Special handling for users table: merge by timestamp
+            if table == 'users':
+                for row in rows:
+                    row_dict = {}
+                    # Extract columns (id is first, created_at is second-to-last, updated_at is last)
+                    user_id_val = row[0]
+                    # Get the schema to map indices to column names
+                    cur.execute(f"PRAGMA table_info({table})")
+                    cols_info = cur.fetchall()  # (cid, name, type, notnull, dflt_value, pk)
+                    col_names = [c[1] for c in cols_info]
+                    
+                    for i, col_name in enumerate(col_names):
+                        row_dict[col_name] = row[i] if i < len(row) else None
+                    
+                    remote_updated = row_dict.get('updated_at')
+                    
+                    # Check if local record exists and is newer
+                    cur.execute(f"SELECT updated_at FROM {table} WHERE id = ?", (user_id_val,))
+                    local_row = cur.fetchone()
+                    
+                    if local_row:
+                        local_updated = local_row[0]
+                        # Only update if remote is newer or local has no timestamp
+                        if local_updated is None or (remote_updated and remote_updated > local_updated):
+                            placeholders = ','.join(['?'] * len(row))
+                            try:
+                                cur.execute(f"INSERT OR REPLACE INTO {table} VALUES ({placeholders})", row)
+                            except:
+                                pass
+                        # else: keep local version (it's newer or updated_at is missing)
+                    else:
+                        # New record, insert it
+                        placeholders = ','.join(['?'] * len(row))
+                        try:
+                            cur.execute(f"INSERT OR REPLACE INTO {table} VALUES ({placeholders})", row)
+                        except:
+                            pass
+            else:
+                # For other tables, use standard insert
                 for row in rows:
                     placeholders = ','.join(['?'] * len(row))
                     try:
                         cur.execute(f"INSERT OR REPLACE INTO {table} VALUES ({placeholders})", row)
                     except:
                         pass
+        
         conn.commit()
         conn.close()
         return jsonify({'status': 'ok'})

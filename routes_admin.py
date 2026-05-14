@@ -108,7 +108,7 @@ def approve(user_id):
         return redirect(url_for('auth.login'))
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET is_approved = 1 WHERE id = ?", (user_id,))
+    cur.execute("UPDATE users SET is_approved = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?", (user_id,))
     conn.commit()
     conn.close()
     flash('Teacher approved!', 'success')
@@ -243,12 +243,12 @@ def edit_user(user_id):
         new_password = request.form.get('password', '').strip()
         is_active = 1 if request.form.get('is_active') == 'on' else 0
         
-        cur.execute("UPDATE users SET first_name=?, last_name=?, email=?, is_approved=? WHERE id=?",
+        cur.execute("UPDATE users SET first_name=?, last_name=?, email=?, is_approved=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
                    (first_name, last_name, email, is_active, user_id))
         
         if new_password:
             from werkzeug.security import generate_password_hash
-            cur.execute("UPDATE users SET password_hash=? WHERE id=?",
+            cur.execute("UPDATE users SET password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
                        (generate_password_hash(new_password), user_id))
         
         if user['role'] == 'student':
